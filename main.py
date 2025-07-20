@@ -31,20 +31,20 @@ def chat_with_mona(user_input: UserMessage):
     profile = get_user_profile(user_input.user_id)
     message = user_input.message.strip()
 
-   # 🧠 Step-by-step onboarding
-   if profile.state == UserProfileState.ASK_NAME:
-    # ✂️ Clean name if user says "اسمي كذا" or "أنا اسمي كذا"
-    if message.startswith("أنا اسمي") or message.startswith("اسمي"):
-        name = message.replace("أنا اسمي", "").replace("اسمي", "").strip()
-    else:
-        name = message.strip()
+    # 🧠 Step-by-step onboarding
+    if profile.state == UserProfileState.ASK_NAME:
+        # ✂️ Clean name if user says "اسمي كذا" or "أنا اسمي كذا"
+        if message.startswith("أنا اسمي") or message.startswith("اسمي"):
+            name = message.replace("أنا اسمي", "").replace("اسمي", "").strip()
+        else:
+            name = message.strip()
 
-    profile.name = name
-    profile.state = UserProfileState.ASK_TITLE
-    update_user_profile(user_input.user_id, profile)
-    return {
-        "reply": f"✨ تشرفت فيك يا {profile.name}!\nWhat's your title?"
-    }
+        profile.name = name
+        profile.state = UserProfileState.ASK_TITLE
+        update_user_profile(user_input.user_id, profile)
+        return {
+            "reply": f"✨ تشرفت فيك يا {profile.name}!\nWhat's your title?"
+        }
 
     elif profile.state == UserProfileState.ASK_TITLE:
         profile.title = message
