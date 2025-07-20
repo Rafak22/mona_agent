@@ -33,42 +33,41 @@ def chat_with_mona(user_input: UserMessage):
     message = user_input.message.strip()
 
     # 🧠 Step-by-step onboarding
-if profile.state == UserProfileState.ASK_NAME:
-    profile.name = message
-    profile.state = UserProfileState.ASK_TITLE
-    update_user_profile(user_input.user_id, profile)
-    return {
-        "reply": f"✨ تشرفت فيك يا {profile.name}!\nWhat's your title?"
-    }
+    if profile.state == UserProfileState.ASK_NAME:
+        profile.name = message
+        profile.state = UserProfileState.ASK_TITLE
+        update_user_profile(user_input.user_id, profile)
+        return {
+            "reply": f"✨ تشرفت فيك يا {profile.name}!\nWhat's your title?"
+        }
 
-elif profile.state == UserProfileState.ASK_TITLE:
-    profile.title = message
-    profile.state = UserProfileState.ASK_ROLE
-    update_user_profile(user_input.user_id, profile)
-    return {
-        "reply": "📌 ممتاز!\nNow tell me your role inside the company."
-    }
+    elif profile.state == UserProfileState.ASK_TITLE:
+        profile.title = message
+        profile.state = UserProfileState.ASK_ROLE
+        update_user_profile(user_input.user_id, profile)
+        return {
+            "reply": "📌 ممتاز!\nNow tell me your role inside the company."
+        }
 
-elif profile.state == UserProfileState.ASK_ROLE:
-    profile.role = message
-    profile.state = UserProfileState.ASK_GOAL
-    update_user_profile(user_input.user_id, profile)
-    return {
-        "reply": "🎯 عظيم!\nWhat's your business goal?"
-    }
+    elif profile.state == UserProfileState.ASK_ROLE:
+        profile.role = message
+        profile.state = UserProfileState.ASK_GOAL
+        update_user_profile(user_input.user_id, profile)
+        return {
+            "reply": "🎯 عظيم!\nWhat's your business goal?"
+        }
 
-elif profile.state == UserProfileState.ASK_GOAL:
-    profile.goal = message
-    profile.state = UserProfileState.COMPLETE
-    update_user_profile(user_input.user_id, profile)
-    return {
-        "reply": f"🔥 جاهزين يا {profile.name}!\nNow you can ask me anything about marketing 🚀"
-    }
-
+    elif profile.state == UserProfileState.ASK_GOAL:
+        profile.goal = message
+        profile.state = UserProfileState.COMPLETE
+        update_user_profile(user_input.user_id, profile)
+        return {
+            "reply": f"🔥 جاهزين يا {profile.name}!\nNow you can ask me anything about marketing 🚀"
+        }
 
     # 🧠 After onboarding — use Perplexity
     elif profile.state == UserProfileState.COMPLETE:
         full_context = f"{profile.name}, a {profile.title}, working as a {profile.role}, wants to achieve: {profile.goal}."
         final_prompt = f"User profile:\n{full_context}\n\nUser question: {message}"
         response = fetch_perplexity_insight(final_prompt)
-        return {"reply": response} 
+        return {"reply": response}
