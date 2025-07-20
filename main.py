@@ -8,7 +8,6 @@ from tools.perplexity_tool import fetch_perplexity_insight
 from dotenv import load_dotenv
 # trigger redeploy
 
-
 load_dotenv()
 logging.basicConfig(level=logging.INFO)
 
@@ -68,6 +67,15 @@ def chat_with_mona(user_input: UserMessage):
     # 🧠 After onboarding — use Perplexity
     elif profile.state == UserProfileState.COMPLETE:
         full_context = f"{profile.name}, a {profile.title}, working as a {profile.role}, wants to achieve: {profile.goal}."
-        final_prompt = f"User profile:\n{full_context}\n\nUser question: {message}"
+        final_prompt = f"""User profile:
+{full_context}
+
+User question:
+{message}
+
+Please format your answer in a clear, structured way suitable for visualization.
+"""
         response = fetch_perplexity_insight(final_prompt)
         return {"reply": response}
+
+
