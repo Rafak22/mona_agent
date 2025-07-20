@@ -6,6 +6,8 @@ from schema import UserMessage, UserProfileState
 from memory_store import get_user_profile, update_user_profile
 from tools.perplexity_tool import fetch_perplexity_insight
 from dotenv import load_dotenv
+# trigger redeploy
+
 
 load_dotenv()
 logging.basicConfig(level=logging.INFO)
