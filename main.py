@@ -79,7 +79,7 @@ def chat_with_mona(user_input: UserMessage):
 User question:
 {message}
 
-Please format your answer in a clear, structured way suitable for visualization.
+Please structure your answer clearly using sections and bullet points only (avoid tables). Format the response in a way that can be easily transformed into visual blocks or graphs in the UI. Use clear headings and short paragraphs, and organize information logically by phases or stages.
 """
         response = fetch_perplexity_insight(final_prompt)
         return {"reply": response}
