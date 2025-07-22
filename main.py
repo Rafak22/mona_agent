@@ -27,7 +27,7 @@ def read_root():
 def chat_with_mona(user_input: UserMessage):
     if not user_input.user_id:
         return {
-            "reply": "👋 Hi, I'm Mona! Let's get to know each other.\nWhat's your name?"
+        "reply": "مرحباً أستاذ سعد، أنا مونا، وكيلتك التسويقية الذكية. جاهزة أساعدك تحقق أهدافك التسويقية — من وين تحب نبدأ اليوم؟"
         }
 
     profile = get_user_profile(user_input.user_id)
@@ -51,6 +51,20 @@ def chat_with_mona(user_input: UserMessage):
             profile.state = UserProfileState.COMPLETE
             update_user_profile(user_input.user_id, profile)
             return {"reply": "❌ تم إلغاء إعادة التهيئة. نكمل من وين وقفنا 😊"}
+
+    # ✅ Welcome back for known users
+    welcome_inputs = ["hi", "hello", "السلام عليكم", "ابدأ", "مونا", "hey"]
+    if profile.state == UserProfileState.COMPLETE and message.lower() in welcome_inputs:
+        return {
+            "reply": (
+                f"أهلًا بعودتك أستاذ {profile.name} 👋\n"
+                "كيف أقدر أساعدك اليوم؟\n\n"
+                "- 📅 بناء خطة تسويقية أسبوعية\n"
+                "- 📄 تحليل خطة PDF\n"
+                "- 💡 اقتراح أفكار محتوى\n"
+                "- 📊 عرض أداء الحملة"
+            )
+        }
 
     # ✅ Onboarding flow
     if profile.state == UserProfileState.ASK_NAME:
@@ -80,7 +94,16 @@ def chat_with_mona(user_input: UserMessage):
         profile.goal = message
         profile.state = UserProfileState.COMPLETE
         update_user_profile(user_input.user_id, profile)
-        return {"reply": f"🔥 جاهزين يا {profile.name}!\nNow you can ask me anything about marketing 🚀"}
+        return {
+            "reply": (
+                f"🔥 جاهزين يا {profile.name}!\n"
+                "كيف أقدر أساعدك اليوم؟\n\n"
+                "- 📅 بناء خطة تسويقية أسبوعية\n"
+                "- 📄 تحليل خطة PDF\n"
+                "- 💡 اقتراح أفكار محتوى\n"
+                "- 📊 عرض أداء الحملة"
+            )
+        }
 
     # ✅ After onboarding — smart Perplexity prompt
     elif profile.state == UserProfileState.COMPLETE:

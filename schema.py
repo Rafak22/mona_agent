@@ -7,16 +7,15 @@ class UserProfileState(str, Enum):
     ASK_ROLE = "ask_role"
     ASK_GOAL = "ask_goal"
     COMPLETE = "complete"
-    CONFIRM_RESET = "CONFIRM_RESET"  # ✅ أضف هذا السطر
-
+    CONFIRM_RESET = "CONFIRM_RESET"
 
 class UserProfile(BaseModel):
-    name: str = ""
-    title: str = ""
-    role: str = ""
-    goal: str = ""
-    state: UserProfileState = UserProfileState.ASK_NAME
+    name: str = "سعد"
+    title: str = "Founder"
+    role: str = "Marketing Director"
+    goal: str = "زيادة ROI عبر حملات فعّالة"
+    state: UserProfileState = UserProfileState.COMPLETE
 
 class UserMessage(BaseModel):
     user_id: str
-    message: str 
+    message: str
