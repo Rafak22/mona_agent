@@ -1,3 +1,4 @@
+import json
 import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -6,8 +7,13 @@ from memory_store import get_user_profile, update_user_profile, users, user_memo
 from tools.perplexity_tool import fetch_perplexity_insight
 from dotenv import load_dotenv
 
+# Load .env and logging
 load_dotenv()
 logging.basicConfig(level=logging.INFO)
+
+# Load clinic data
+with open("clinic_data.json", "r", encoding="utf-8") as f:
+    clinic_data = json.load(f)
 
 app = FastAPI()
 
@@ -23,37 +29,40 @@ app.add_middleware(
 def read_root():
     return {"message": "👋 Mona is ready to help you 3x your ROI!"}
 
+def is_clinic_related(message: str) -> bool:
+    keywords = [
+        "العيادة", "باسم", "الموقع", "الخدمات", "الفئة المستهدفة",
+        "عيادة", "marketing in health", "health clinic", "سوق العيادات", "الخدمات الطبية"
+    ]
+    return any(kw in message for kw in keywords)
+
 @app.post("/chat")
 def chat_with_mona(user_input: UserMessage):
     if not user_input.user_id:
         return {
-        "reply": "مرحباً أستاذ سعد، أنا مونا، وكيلتك التسويقية الذكية. جاهزة أساعدك تحقق أهدافك التسويقية — من وين تحب نبدأ اليوم؟"
+            "reply": "مرحباً أستاذ سعد، أنا مونا، وكيلتك التسويقية الذكية. جاهزة أساعدك تحقق أهدافك التسويقية — من وين تحب نبدأ اليوم؟"
         }
 
     profile = get_user_profile(user_input.user_id)
-    message = user_input.message.strip()
+    message = user_input.message.strip().lower()
 
-    # ✅ Start Over confirmation logic
-    if message.lower() == "start over":
+    if message == "start over":
         profile.state = UserProfileState.CONFIRM_RESET
         update_user_profile(user_input.user_id, profile)
         return {"reply": "⚠️ هل أنت متأكد أنك تريد البدء من جديد؟ اكتب: نعم"}
 
     if profile.state == UserProfileState.CONFIRM_RESET:
-        if message.strip().lower() == "نعم":
+        if message == "نعم":
             users[user_input.user_id] = UserProfile()
             if user_input.user_id in user_memory:
                 del user_memory[user_input.user_id]
-            return {
-                "reply": "🔄 تم إعادة تعيين المحادثة. أهلاً من جديد! ما اسمك؟"
-            }
+            return {"reply": "🔄 تم إعادة تعيين المحادثة. أهلاً من جديد! ما اسمك؟"}
         else:
             profile.state = UserProfileState.COMPLETE
             update_user_profile(user_input.user_id, profile)
             return {"reply": "❌ تم إلغاء إعادة التهيئة. نكمل من وين وقفنا 😊"}
 
-    # ✅ لو أول رسالة أو فاضية أو كلمة مثل "ابدأ" نعتبرها بداية محادثة
-    if profile.state == UserProfileState.COMPLETE and message.lower() in ["", "hi", "hello", "ابدأ", "start", "مونا"]:
+    if profile.state == UserProfileState.COMPLETE and message in ["", "hi", "hello", "ابدأ", "start", "مونا"]:
         return {
             "reply": (
                 "مرحباً أستاذ سعد، أنا مونا، وكيلتك التسويقية الذكية. "
@@ -65,55 +74,53 @@ def chat_with_mona(user_input: UserMessage):
             )
         }
 
-    # ✅ Onboarding flow
-    if profile.state == UserProfileState.ASK_NAME:
-        if message.startswith("أنا اسمي") or message.startswith("اسمي"):
-            name = message.replace("أنا اسمي", "").replace("اسمي", "").strip()
-        else:
-            name = message.strip()
+    keywords_tools = {
+        "brand24": ["brand monitoring", "mentions", "reputation", "براند", "براند24"],
+        "se ranking": ["seo", "keyword tracking", "تحليل كلمات", "تصدر جوجل", "تحسين محركات"],
+        "ayrshare": ["post on social media", "ayrshare", "جدولة", "نشر", "سوشيال ميديا"],
+    }
 
-        profile.name = name
-        profile.state = UserProfileState.ASK_TITLE
-        update_user_profile(user_input.user_id, profile)
-        return {"reply": f"✨ تشرفت فيك يا {profile.name}!\nWhat's your title?"}
+    for tool, keywords in keywords_tools.items():
+        if any(kw in message for kw in keywords):
+            return {
+                "reply": (
+                    f"🔧 الميزة اللي طلبتها لسه ما فعّلتها يا أستاذ {profile.name}، "
+                    "لكن قريبًا راح أقدر أساعدك باستخدام أدوات متخصصة مثل "
+                    "Brand24, SE Ranking, و Ayrshare.\n"
+                    "تابعني عشان تعرف أول بأول التحديثات القادمة 💡"
+                )
+            }
 
-    elif profile.state == UserProfileState.ASK_TITLE:
-        profile.title = message
-        profile.state = UserProfileState.ASK_ROLE
-        update_user_profile(user_input.user_id, profile)
-        return {"reply": "📌 ممتاز!\nNow tell me your role inside the company."}
-
-    elif profile.state == UserProfileState.ASK_ROLE:
-        profile.role = message
-        profile.state = UserProfileState.ASK_GOAL
-        update_user_profile(user_input.user_id, profile)
-        return {"reply": "🎯 عظيم!\nWhat's your business goal?"}
-
-    elif profile.state == UserProfileState.ASK_GOAL:
-        profile.goal = message
-        profile.state = UserProfileState.COMPLETE
-        update_user_profile(user_input.user_id, profile)
+    if is_clinic_related(message):
         return {
             "reply": (
-                f"🔥 جاهزين يا {profile.name}!\n"
-                "كيف أقدر أساعدك اليوم؟\n\n"
-                "- 📅 بناء خطة تسويقية أسبوعية\n"
-                "- 📄 تحليل خطة PDF\n"
-                "- 💡 اقتراح أفكار محتوى\n"
-                "- 📊 عرض أداء الحملة"
+                f"🏥 معلومات عن عيادة باسم:\n"
+                f"- 📍 الموقع: {clinic_data['location']}\n"
+                f"- 🏢 الحجم: {clinic_data['size']}\n"
+                f"- 💼 الخدمات: {', '.join(clinic_data['services'])}\n"
+                f"- 🎯 الأهداف: {clinic_data['goals']}\n"
+                f"- 👥 الفئة المستهدفة: {clinic_data['audience']}\n"
+                f"- 📈 جهود التسويق الحالية: {clinic_data['current_marketing']}\n"
+                f"- ❗ التحديات: {clinic_data['challenges']}\n\n"
+                f"📊 حجم سوق العيادات الصحية في السعودية: {clinic_data['market_size']}"
             )
         }
 
-    # ✅ After onboarding — smart Perplexity prompt
-    elif profile.state == UserProfileState.COMPLETE:
-        full_context = f"{profile.name}, a {profile.title}, working as a {profile.role}, wants to achieve: {profile.goal}."
-        final_prompt = f"""User profile:
+    full_context = f"{profile.name}, a {profile.title}, working as a {profile.role}, wants to achieve: {profile.goal}."
+    final_prompt = f"""Context:
 {full_context}
 
 User question:
 {message}
 
-Please structure your answer clearly using sections and bullet points only (avoid tables). Format the response in a way that can be easily transformed into visual blocks or graphs in the UI. Use clear headings and short paragraphs, and organize information logically by phases or stages.
+Respond with high quality insights using Perplexity. Make sure the answer is:
+- Well-structured and rich in detail
+- Divided into clear sections with headings
+- Bullet points where helpful
+- Easy to use in visual or UI blocks
+
+This prompt style follows the top-performing strategy based on: https://docs.perplexity.ai/getting-started/overview
 """
-        response = fetch_perplexity_insight(final_prompt)
-        return {"reply": response}
+    response = fetch_perplexity_insight(final_prompt)
+    return {"reply": response}
+
