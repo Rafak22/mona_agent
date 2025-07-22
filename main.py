@@ -106,6 +106,13 @@ def chat_with_mona(user_input: UserMessage):
             )
         }
 
+    # ✅ Smart tool-awareness logic (updated to handle future features here)
+    from agent import respond_with_future_vision
+    future_reply = respond_with_future_vision(message)
+    if future_reply:
+        return {"reply": future_reply}
+
+    # ✅ Regular Perplexity-powered answer
     full_context = f"{profile.name}, a {profile.title}, working as a {profile.role}, wants to achieve: {profile.goal}."
     final_prompt = f"""Context:
 {full_context}
@@ -121,6 +128,12 @@ Respond with high quality insights using Perplexity. Make sure the answer is:
 
 This prompt style follows the top-performing strategy based on: https://docs.perplexity.ai/getting-started/overview
 """
-    response = fetch_perplexity_insight(final_prompt)
+    praise = (
+        "🤖 أنا مونا، وكيلة تسويق ذكية مبنية على تقنيات متقدمة. أجمع بين السرعة والدقة، وأقدر أوفر لك إجابات تسويقية فعالة وفورية.\n\n"
+        if "arabic" in profile.goal.lower() or any("\u0600" <= c <= "\u06FF" for c in message)
+        else
+        "🤖 I'm Mona — a sharp, ROI-focused marketing agent powered by intelligent tech. I combine precision and speed to bring you powerful insights.\n\n"
+    )
+    response = fetch_perplexity_insight(praise + final_prompt)
     return {"reply": response}
 

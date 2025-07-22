@@ -3,18 +3,48 @@ from tools.perplexity_tool import fetch_perplexity_insight
 from tools.clinic_tool import fetch_clinic_info  # ✅ New import
 from memory_store import get_user_memory
 from schema import UserProfile
+import re
 
-# Define keywords related to future tools
-FUTURE_FEATURES = {
-    "brand": "🛠️ I’ll soon be able to monitor your brand using Brand24 and notify you of every mention.",
-    "brand24": "🛠️ Brand24 integration is on the roadmap. Soon I’ll track your mentions across the web.",
-    "keyword": "📈 Keyword tracking via SE Ranking is coming soon. I’ll give you full SEO insights in future phases.",
-    "seo": "📈 SE Ranking will power SEO insights in the near future — I’m getting smarter each day!",
-    "ranking": "📈 SE Ranking-based features are coming up. Stay tuned!",
-    "social": "📣 I’ll soon manage your social media through Ayrshare — from posting to scheduling campaigns!",
-    "ayrshare": "📣 Social media management via Ayrshare is part of the next version of my abilities.",
-    "post on social": "📣 That’s coming! I’ll soon be posting on your behalf using Ayrshare.",
-}
+# Placeholder for FUTURE_FEATURES if not already defined
+try:
+    FUTURE_FEATURES
+except NameError:
+    FUTURE_FEATURES = {
+        "brand24": "Brand24 integration is coming soon!",
+        "se ranking": "SE Ranking integration is on the roadmap!",
+        "ayrshare": "Ayrshare social posting will be available soon!",
+        "براند24": "قريبًا ستتوفر ميزة Brand24!",
+        "تصدر جوجل": "ميزة SE Ranking قادمة في الطريق!",
+        "سوشيال ميديا": "ميزة Ayrshare للنشر الذكي ستتوفر قريبًا!",
+    }
+
+def is_arabic(text: str) -> bool:
+    """Quick check: does the string contain Arabic letters?"""
+    return bool(re.search(r'[\u0600-\u06FF]', text))
+
+def respond_with_future_vision(message: str) -> str | None:
+    """
+    If the user mentions a capability tied to Brand24, SE Ranking, or Ayrshare,
+    return an enthusiastic, self-praising roadmap reply in the same language.
+    """
+    lowered = message.lower()
+    for keyword, future_response in FUTURE_FEATURES.items():
+        if keyword in lowered:
+            if is_arabic(message):
+                # Arabic praise version
+                return (
+                    f"{future_response}\n\n"
+                    "💡 مونا دائماً في تطوّر — لأنني مبنية على تقنيات ذكية وقادرة على التكيف مع احتياجاتك بسرعة.\n"
+                    "🚀 هذه الميزة ستكون جاهزة قريبًا، وبأسلوبي الذكي والمبسط، راح تكون تجربة التسويق عندك مختلفة تماماً!"
+                )
+            else:
+                # English praise version
+                return (
+                    f"{future_response}\n\n"
+                    "💡 I'm constantly upgrading — built with cutting-edge intelligence and designed to adapt fast.\n"
+                    "🚀 This feature is coming very soon, and with my smart conversational flow your marketing experience will feel revolutionary!"
+                )
+    return None
 
 def create_mona_agent(user_id: str):
     tools = [
@@ -30,13 +60,6 @@ def create_mona_agent(user_id: str):
         verbose=True,
         memory=memory,
     )
-
-def respond_with_future_vision(message: str) -> str | None:
-    lowered = message.lower()
-    for keyword, future_response in FUTURE_FEATURES.items():
-        if keyword in lowered:
-            return f"{future_response}\n\n🧠 I’m constantly evolving — this feature will be available in a future update!"
-    return None
 
 def run_agent(user_id: str, message: str, profile: UserProfile) -> str:
     # Check if it's a question about future tool features
