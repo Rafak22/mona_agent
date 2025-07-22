@@ -96,13 +96,14 @@ def chat_with_mona(user_input: UserMessage):
             "reply": (
                 f"🏥 معلومات عن عيادة باسم:\n"
                 f"- 📍 الموقع: {clinic_data['location']}\n"
-                f"- 🏢 الحجم: {clinic_data['size']}\n"
+                f"- 🏢 الحجم: {clinic_data['clinic_size']}\n"
                 f"- 💼 الخدمات: {', '.join(clinic_data['services'])}\n"
-                f"- 🎯 الأهداف: {clinic_data['goals']}\n"
-                f"- 👥 الفئة المستهدفة: {clinic_data['audience']}\n"
-                f"- 📈 جهود التسويق الحالية: {clinic_data['current_marketing']}\n"
-                f"- ❗ التحديات: {clinic_data['challenges']}\n\n"
-                f"📊 حجم سوق العيادات الصحية في السعودية: {clinic_data['market_size']}"
+                f"- 🎯 الأهداف: {', '.join(clinic_data['goals'])}\n"
+                f"- 👥 الفئة المستهدفة: {', '.join(clinic_data['audience_segments'])}\n"
+                f"- 📈 جهود التسويق الحالية: {', '.join(clinic_data['current_marketing']['channels'])}\n"
+                f"- ❗ التحديات: {', '.join(clinic_data['current_marketing']['challenges'])}\n\n"
+                f"📊 حجم سوق العيادات الصحية في السعودية: {clinic_data['industry_insights']['clinic_market_size_saudi']}\n\n"
+                "🧠 (تم تجميع هذه البيانات بواسطة مونا، وكيلتك الذكية 🌟)"
             )
         }
 
