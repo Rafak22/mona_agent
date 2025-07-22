@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from schema import UserMessage, UserProfileState, UserProfile
 from memory_store import get_user_profile, update_user_profile, users, user_memory
 from tools.perplexity_tool import fetch_perplexity_insight
+from tools.clinic_tool import fetch_clinic_info
 from dotenv import load_dotenv
 
 # Load .env and logging
@@ -92,20 +93,7 @@ def chat_with_mona(user_input: UserMessage):
             }
 
     if is_clinic_related(message):
-        return {
-            "reply": (
-                f"🏥 معلومات عن عيادة باسم:\n"
-                f"- 📍 الموقع: {clinic_data['location']}\n"
-                f"- 🏢 الحجم: {clinic_data['clinic_size']}\n"
-                f"- 💼 الخدمات: {', '.join(clinic_data['services'])}\n"
-                f"- 🎯 الأهداف: {', '.join(clinic_data['goals'])}\n"
-                f"- 👥 الفئة المستهدفة: {', '.join(clinic_data['audience_segments'])}\n"
-                f"- 📈 جهود التسويق الحالية: {', '.join(clinic_data['current_marketing']['channels'])}\n"
-                f"- ❗ التحديات: {', '.join(clinic_data['current_marketing']['challenges'])}\n\n"
-                f"📊 حجم سوق العيادات الصحية في السعودية: {clinic_data['industry_insights']['clinic_market_size_saudi']}\n\n"
-                "🧠 (تم تجميع هذه البيانات بواسطة مونا، وكيلتك الذكية 🌟)"
-            )
-        }
+        return {"reply": fetch_clinic_info.run(message)}
 
     # ✅ Smart tool-awareness logic (updated to handle future features here)
     from agent import respond_with_future_vision
