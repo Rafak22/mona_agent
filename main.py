@@ -1,9 +1,8 @@
-
 import logging
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from schema import UserMessage, UserProfileState
-from memory_store import get_user_profile, update_user_profile
+from schema import UserMessage, UserProfileState, UserProfile
+from memory_store import get_user_profile, update_user_profile, users, user_memory
 from tools.perplexity_tool import fetch_perplexity_insight
 from dotenv import load_dotenv
 
@@ -33,6 +32,25 @@ def chat_with_mona(user_input: UserMessage):
 
     profile = get_user_profile(user_input.user_id)
     message = user_input.message.strip()
+
+    # ✅ Start Over confirmation logic
+    if message.lower() == "start over":
+        profile.state = UserProfileState.CONFIRM_RESET
+        update_user_profile(user_input.user_id, profile)
+        return {"reply": "⚠️ هل أنت متأكد أنك تريد البدء من جديد؟ اكتب: نعم"}
+
+    if profile.state == UserProfileState.CONFIRM_RESET:
+        if message.strip().lower() == "نعم":
+            users[user_input.user_id] = UserProfile()
+            if user_input.user_id in user_memory:
+                del user_memory[user_input.user_id]
+            return {
+                "reply": "🔄 تم إعادة تعيين المحادثة. أهلاً من جديد! ما اسمك؟"
+            }
+        else:
+            profile.state = UserProfileState.COMPLETE
+            update_user_profile(user_input.user_id, profile)
+            return {"reply": "❌ تم إلغاء إعادة التهيئة. نكمل من وين وقفنا 😊"}
 
     # ✅ Onboarding flow
     if profile.state == UserProfileState.ASK_NAME:
