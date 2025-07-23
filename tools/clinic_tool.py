@@ -85,4 +85,4 @@ def fetch_clinic_info(question: str) -> str:
         return wrap_response(f"🔭 {'رؤية العيادة' if is_ar else 'Clinic vision'}: {vision}")
 
     else:
-        return "❓ أحتاج توضيح أكثر لسؤالك عن العيادة. ممكن تعيد صياغته؟" if is_ar else "❓ I need more clarity to answer your clin"
+        return "❓ أحتاج توضيح أكثر لسؤالك عن العيادة. ممكن تعيد صياغته؟" if is_ar else "❓ I need more clarity to answer you about the clinic. Can you rephrase it?"
