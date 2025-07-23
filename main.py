@@ -32,8 +32,13 @@ def read_root():
 
 def is_clinic_related(message: str) -> bool:
     keywords = [
-        "العيادة", "باسم", "الموقع", "الخدمات", "الفئة المستهدفة",
-        "عيادة", "marketing in health", "health clinic", "سوق العيادات", "الخدمات الطبية"
+        # Arabic
+        "العيادة", "باسم", "الموقع", "الخدمات", "الفئة المستهدفة", "عيادة",
+        "سوق العيادات", "الخدمات الطبية",
+        # English
+        "clinic", "bassim", "location", "services", "target audience",
+        "goals", "marketing goals", "market size", "clinic market", 
+        "current marketing", "challenges", "clinic size", "vision", "what does the clinic offer"
     ]
     return any(kw in message for kw in keywords)
 
