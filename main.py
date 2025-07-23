@@ -42,6 +42,10 @@ def is_clinic_related(message: str) -> bool:
     ]
     return any(kw in message for kw in keywords)
 
+def is_future_tool_question(msg: str) -> bool:
+    future_keywords = ["brand24", "se ranking", "ayrshare", "future tool", "أداة", "ميزة", "قريبًا"]
+    return any(tool in msg for tool in future_keywords)
+
 @app.post("/chat")
 def chat_with_mona(user_input: UserMessage):
     if not user_input.user_id:
@@ -72,7 +76,7 @@ def chat_with_mona(user_input: UserMessage):
         return {
             "reply": (
                 "أهلاً مرة ثانية أستاذ سعد 👋\n"
-                "حابين نكمل من وين وقفنا — هل تحب نبدأ بخطة تسويقية مخصصة لعيادة باسم؟\n"
+                " نكمل من وين وقفنا؟ — هل تحب نبدأ بخطة تسويقية مخصصة لعيادة باسم؟\n"
                 "أو تفضل أول نراجع بيانات العيادة الحالية ونشوف كيف نقدر نحسّن حضورها الرقمي؟\n"
                 "أنا جاهزة أساعدك بكل خطوة 💼"
             )
@@ -97,18 +101,20 @@ def chat_with_mona(user_input: UserMessage):
                 )
             }
 
+    # 🏥 Clinic-related answer (only if confident)
     if is_clinic_related(message):
         clinic_reply = fetch_clinic_info.run(message)
-        if "❓" in clinic_reply or "more clarity" in clinic_reply.lower():
-            pass  # let it fall through to Perplexity
-        else:
+        if "❓" not in clinic_reply and "more clarity" not in clinic_reply.lower():
             return {"reply": clinic_reply}
+        # otherwise fallback to Perplexity
 
-    # ✅ Smart tool-awareness logic (updated to handle future features here)
+    # 🔮 Future tools answer (only if clearly a future tools message)
     from agent import respond_with_future_vision
-    future_reply = respond_with_future_vision(message)
-    if future_reply:
-        return {"reply": future_reply}
+    if is_future_tool_question(message):
+        future_reply = respond_with_future_vision(message)
+        if future_reply and ("قريبًا" in future_reply or "coming soon" in future_reply):
+            return {"reply": future_reply}
+        # otherwise fallback to Perplexity
 
     # ✅ Regular Perplexity-powered answer
     full_context = f"{profile.name}, a {profile.title}, working as a {profile.role}, wants to achieve: {profile.goal}."
@@ -132,6 +138,6 @@ This prompt style follows the top-performing strategy based on: https://docs.per
         else
         "🤖 I'm Mona — a sharp, ROI-focused marketing agent powered by intelligent tech. I combine precision and speed to bring you powerful insights.\n\n"
     )
-    response = fetch_perplexity_insight(praise + final_prompt)
+    response = fetch_perplexity_insight.invoke(praise + final_prompt)
     return {"reply": response}
 
