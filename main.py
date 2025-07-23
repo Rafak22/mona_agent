@@ -84,7 +84,7 @@ def chat_with_mona(user_input: UserMessage):
 
     keywords_tools = {
         "brand24": ["brand monitoring", "mentions", "reputation", "براند", "براند24"],
-        "se ranking": ["seo", "keyword tracking", "تحليل كلمات", "تصدر جوجل", "تحسين محركات"],
+        "se ranking": ["seo", "keyword tracking", "تحليل الكلمات", "تصدر جوجل", "تحسين المحركات"],
         "ayrshare": ["post on social media", "ayrshare", "جدولة", "نشر", "سوشيال ميديا"],
     }
 
