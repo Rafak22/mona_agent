@@ -39,55 +39,77 @@ def fetch_clinic_info(question: str) -> str:
         return wrap_response(f"🕘 {clinic_data['business_hours'][lang]}")
 
     elif "services" in q or "وش تقدم" in q or "الخدمات" in q or "تخصصات" in q:
-        services = ", ".join(clinic_data["services"][lang])
-        return wrap_response(f"💼 {'خدمات العيادة تشمل' if is_ar else 'Clinic services include'}: {services}")
+        services_list = clinic_data.get("services", {}).get(lang)
+        if services_list:
+            services = "\n".join([f"• {item}" for item in services_list])
+            return wrap_response(f"💼 {'خدمات العيادة تشمل' if is_ar else 'Clinic services include'}:\n{services}")
+        else:
+            return wrap_response("لم أتمكن من العثور على قائمة الخدمات حاليًا." if is_ar else "Service list not found.")
 
     elif "جمهور" in q or "الفئة المستهدفة" in q or "audience" in q:
-        audience = ", ".join(clinic_data["audience_segments"][lang])
-        return wrap_response(f"👥 {'الفئة المستهدفة' if is_ar else 'Target audience'}: {audience}")
+        audience_list = clinic_data.get("audience_segments", {}).get(lang)
+        if audience_list:
+            audience = "\n".join([f"• {item}" for item in audience_list])
+            return wrap_response(f"👥 {'الفئة المستهدفة' if is_ar else 'Target audience'}:\n{audience}")
+        else:
+            return wrap_response("لا توجد معلومات عن الفئة المستهدفة." if is_ar else "Target audience info not found.")
 
     elif "goal" in q or "الأهداف" in q or "هدف" in q:
-        goals = ", ".join(clinic_data["goals"][lang])
-        return wrap_response(f"🎯 {'الأهداف التسويقية' if is_ar else 'Marketing goals'}: {goals}")
+        goals_list = clinic_data.get("goals", {}).get(lang)
+        if goals_list:
+            goals = "\n".join([f"• {item}" for item in goals_list])
+            return wrap_response(f"🎯 {'الأهداف التسويقية' if is_ar else 'Marketing goals'}:\n{goals}")
+        else:
+            return wrap_response("لا توجد أهداف واضحة حالياً." if is_ar else "Marketing goals not found.")
 
     elif "حجم السوق" in q or "industry" in q or "market" in q:
-        size = clinic_data["industry_insights"]["clinic_market_size_saudi"][lang]
-        return wrap_response(f"📊 {'حجم سوق العيادات في السعودية' if is_ar else 'Clinic market size in Saudi Arabia'}: {size}")
+        size = clinic_data.get("industry_insights", {}).get("clinic_market_size_saudi", {}).get(lang)
+        return wrap_response(
+            f"📊 {'حجم سوق العيادات في السعودية' if is_ar else 'Clinic market size in Saudi Arabia'}: {size}"
+        ) if size else wrap_response("لا توجد بيانات عن حجم السوق." if is_ar else "Market size data not available.")
 
-    elif "إعلانات" in q or "جهود" in q or "current" in q or "الحالية" in q:
-        m = clinic_data["current_marketing"]
-        channels = ", ".join(m["channels"][lang])
-        strengths = ", ".join(m["strengths"][lang])
-        challenges = ", ".join(m["challenges"][lang])
+    elif (
+        "إعلانات" in q or "جهود" in q or "current" in q or "الحالية" in q
+        or "القنوات" in q or "التسويقية" in q or "قنوات التسويق" in q or "channels" in q
+    ):
+        m = clinic_data.get("current_marketing", {})
+        channels = m.get("channels", {}).get(lang, [])
+        strengths = m.get("strengths", {}).get(lang, [])
+        challenges = m.get("challenges", {}).get(lang, [])
         return wrap_response(
             f"📣 {'الجهود التسويقية الحالية' if is_ar else 'Current marketing efforts'}:\n"
-            f"- {'القنوات' if is_ar else 'Channels'}: {channels}\n"
-            f"- {'نقاط القوة' if is_ar else 'Strengths'}: {strengths}\n"
-            f"- {'التحديات' if is_ar else 'Challenges'}: {challenges}"
+            f"- {'القنوات' if is_ar else 'Channels'}: {', '.join(channels)}\n"
+            f"- {'نقاط القوة' if is_ar else 'Strengths'}: {', '.join(strengths)}\n"
+            f"- {'التحديات' if is_ar else 'Challenges'}: {', '.join(challenges)}"
         )
 
     elif "challenge" in q or "تحديات" in q:
-        challenges = ", ".join(clinic_data["current_marketing"]["challenges"][lang])
-        return wrap_response(f"⚠️ {'التحديات' if is_ar else 'Challenges'}: {challenges}")
+        challenges = clinic_data.get("current_marketing", {}).get("challenges", {}).get(lang, [])
+        return wrap_response(
+            f"⚠️ {'التحديات' if is_ar else 'Challenges'}:\n" + "\n".join([f"• {c}" for c in challenges])
+        ) if challenges else wrap_response("لا توجد تحديات مسجلة حالياً." if is_ar else "No challenges listed.")
 
     elif "الحجم" in q or "size" in q:
-        size = clinic_data["clinic_size"][lang]
-        return wrap_response(f"🏢 {'حجم العيادة' if is_ar else 'Clinic size'}: {size}")
+        size = clinic_data.get("clinic_size", {}).get(lang)
+        return wrap_response(f"🏢 {'حجم العيادة' if is_ar else 'Clinic size'}: {size}") if size else wrap_response("لا توجد بيانات عن حجم العيادة." if is_ar else "Clinic size data not found.")
 
     elif "رؤية" in q or "vision" in q:
-        vision = clinic_data["vision"][lang]
-        return wrap_response(f"🔭 {'رؤية العيادة' if is_ar else 'Clinic vision'}: {vision}")
+        vision = clinic_data.get("vision", {}).get(lang)
+        return wrap_response(f"🔭 {'رؤية العيادة' if is_ar else 'Clinic vision'}: {vision}") if vision else wrap_response("لا توجد رؤية واضحة حالياً." if is_ar else "Vision not available.")
 
     elif "social" in q or "انستغرام" in q or "تيك توك" in q or "روابط" in q:
-        sm = clinic_data["social_media"]
+        sm = clinic_data.get("social_media", {})
+        insta = sm.get("instagram", "غير متوفر")
+        tiktok = sm.get("tiktok", "غير متوفر")
         return wrap_response(
             f"🌐 {'روابط التواصل الاجتماعي' if is_ar else 'Social media links'}:\n"
-            f"- Instagram: {sm['instagram']}\n"
-            f"- TikTok: {sm['tiktok']}"
+            f"- Instagram: {insta}\n"
+            f"- TikTok: {tiktok}"
         )
 
     elif "تعريف" in q or "ما هي" in q or "من أنتم" in q or "description" in q:
-        return wrap_response(f"ℹ️ {clinic_data['description'][lang]}")
+        description = clinic_data.get("description", {}).get(lang)
+        return wrap_response(f"ℹ️ {description}") if description else wrap_response("لا يوجد وصف حالياً." if is_ar else "No description available.")
 
     else:
         return "❓ أحتاج توضيح أكثر لسؤالك عن العيادة. ممكن تعيد صياغته؟" if is_ar else "❓ I need more clarity to answer you about the clinic. Can you rephrase it?"
