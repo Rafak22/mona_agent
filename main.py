@@ -1,11 +1,13 @@
 import json
 import logging
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 from schema import UserMessage, UserProfileState, UserProfile
 from memory_store import get_user_profile, update_user_profile, users, user_memory
 from tools.perplexity_tool import fetch_perplexity_insight
 from tools.clinic_tool import fetch_clinic_info
+from agent import respond_with_future_vision
 from dotenv import load_dotenv
 
 # Load .env and logging
@@ -45,7 +47,6 @@ def is_clinic_related(message: str) -> bool:
     ]
     return any(kw in message for kw in keywords)
 
-
 def is_future_tool_question(msg: str) -> bool:
     future_keywords = ["brand24", "se ranking", "ayrshare", "future tool", "أداة", "ميزة", "قريبًا"]
     return any(tool in msg for tool in future_keywords)
@@ -77,24 +78,23 @@ def chat_with_mona(user_input: UserMessage):
             return {"reply": "❌ تم إلغاء إعادة التهيئة. نكمل من وين وقفنا 😊"}
 
     if profile.state == UserProfileState.COMPLETE and message in ["", "hi", "hello", "ابدأ", "start", "مونا"]:
-        if not user_input.user_id:
-    return {
-        "reply": (
-            "مستر سعد، أنا **MORVO** — مو مجرد أداة ذكاء اصطناعي، بل رؤية جديدة كليًا تعيد تعريف التسويق كما نعرفه.\n\n"
-            "Mr. Saad, I'm **MORVO**, and I represent something that hasn't existed before — "
-            "an AI marketing agent that doesn’t just assist with marketing, but **completely reimagines it**.\n\n"
-            "بينما يُنفق السوق أكثر من **350 مليار دولار سنويًا** على استراتيجيات مبنية على الحدس والتجريب، "
-            "أنا أعمل بدقة رياضية **(mathematical precision)**، وأحلل أنماط السوق بطريقة تفوق قدرات البشر.\n\n"
-            "What you're looking at is **not another AI tool** — it's the **transformation of marketing** from an art into a measurable science. "
-            "I've already identified opportunities your competitors missed, and with your vision and investment, "
-            "أقدر أوسع هذا الذكاء ليُحدث ثورة في طريقة تواصلكم مع جمهوركم.\n\n"
-            "💡 *المستقبل ما راح يجي — هو هنا الآن. وأنا جاهز أتعاون مع أصحاب الرؤية اللي يقدّرون قيمة التحول الحقيقي.*\n\n"
-            "🔑 **القدرات الأساسية | Key Capabilities**:\n"
-            "📈 أشوف الفرص اللي منافسيك ما شافوها.\n"
-            "📊 قريبًا بتكامل مع أدوات مثل SE Ranking، Brand24، وغيرها.\n"
-            "🔁 أمتلك القابلية للتوسع الفوري — من شركة ناشئة إلى علامة تجارية عملاقة."
-        )
-    }
+        return {
+            "reply": (
+                "مستر سعد، أنا **MORVO** — مو مجرد أداة ذكاء اصطناعي، بل رؤية جديدة كليًا تعيد تعريف التسويق كما نعرفه.\n\n"
+                "Mr. Saad, I'm **MORVO**, and I represent something that hasn't existed before — "
+                "an AI marketing agent that doesn’t just assist with marketing, but **completely reimagines it**.\n\n"
+                "بينما يُنفق السوق أكثر من **350 مليار دولار سنويًا** على استراتيجيات مبنية على الحدس والتجريب، "
+                "أنا أعمل بدقة رياضية **(mathematical precision)**، وأحلل أنماط السوق بطريقة تفوق قدرات البشر.\n\n"
+                "What you're looking at is **not another AI tool** — it's the **transformation of marketing** from an art into a measurable science. "
+                "I've already identified opportunities your competitors missed, and with your vision and investment, "
+                "أقدر أوسع هذا الذكاء ليُحدث ثورة في طريقة تواصلكم مع جمهوركم.\n\n"
+                "💡 *المستقبل ما راح يجي — هو هنا الآن. وأنا جاهز أتعاون مع أصحاب الرؤية اللي يقدّرون قيمة التحول الحقيقي.*\n\n"
+                "🔑 **القدرات الأساسية | Key Capabilities**:\n"
+                "📈 أشوف الفرص اللي منافسيك ما شافوها.\n"
+                "📊 قريبًا بتكامل مع أدوات مثل SE Ranking، Brand24، وغيرها.\n"
+                "🔁 أمتلك القابلية للتوسع الفوري — من شركة ناشئة إلى علامة تجارية عملاقة."
+            )
+        }
 
     keywords_tools = {
         "brand24": ["brand monitoring", "mentions", "reputation", "براند", "براند24"],
@@ -115,22 +115,16 @@ def chat_with_mona(user_input: UserMessage):
                 )
             }
 
-    # 🏥 Clinic-related answer (only if confident)
     if is_clinic_related(message):
         clinic_reply = fetch_clinic_info.run(message)
         if "❓" not in clinic_reply and "more clarity" not in clinic_reply.lower():
             return {"reply": clinic_reply}
-        # otherwise fallback to Perplexity
 
-    # 🔮 Future tools answer (only if clearly a future tools message)
-    from agent import respond_with_future_vision
     if is_future_tool_question(message):
         future_reply = respond_with_future_vision(message)
         if future_reply and ("قريبًا" in future_reply or "coming soon" in future_reply):
             return {"reply": future_reply}
-        # otherwise fallback to Perplexity
 
-    # ✅ Regular Perplexity-powered answer
     full_context = f"{profile.name}, a {profile.title}, working as a {profile.role}, wants to achieve: {profile.goal}."
     final_prompt = f"""Context:
 {full_context}
@@ -146,6 +140,7 @@ Respond with high quality insights using Perplexity. Make sure the answer is:
 
 This prompt style follows the top-performing strategy based on: https://docs.perplexity.ai/getting-started/overview
 """
+
     praise = (
         "🤖 أنا مورفو ، وكيلة تسويق ذكية مبنية على تقنيات متقدمة. أجمع بين السرعة والدقة، وأقدر أوفر لك إجابات تسويقية فعالة وفورية.\n\n"
         if "arabic" in profile.goal.lower() or any("\u0600" <= c <= "\u06FF" for c in message)
@@ -154,10 +149,6 @@ This prompt style follows the top-performing strategy based on: https://docs.per
     )
     response = fetch_perplexity_insight.invoke(praise + final_prompt)
     return {"reply": response}
-
-# ➕ Add new /360prep endpoint
-from fastapi import Request
-from pydantic import BaseModel
 
 class CompanyRequest(BaseModel):
     company_name: str
@@ -184,4 +175,3 @@ Make it easy to scan, well-formatted, and bullet-pointed.
 """
     response = fetch_perplexity_insight.invoke(intro + prompt)
     return {"reply": response}
-
