@@ -1,5 +1,6 @@
 import json
 import logging
+import textwrap
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -14,7 +15,6 @@ from dotenv import load_dotenv
 load_dotenv()
 logging.basicConfig(level=logging.INFO)
 
-# Load clinic data
 with open("clinic_data.json", "r", encoding="utf-8") as f:
     clinic_data = json.load(f)
 
@@ -34,12 +34,9 @@ def read_root():
 
 def is_clinic_related(message: str) -> bool:
     keywords = [
-        # Arabic
         "العيادة", "باسم", "الموقع", "الخدمات", "الفئة المستهدفة", "عيادة",
         "سوق العيادات", "الخدمات الطبية", "أوقات العمل", "ساعات العمل", "الرؤية", "الرؤية المستقبلية",
         "روابط", "انستغرام", "تيك توك", "التواصل الاجتماعي", "وصف", "من أنتم", "ما هي",
-
-        # English
         "clinic", "bassim", "location", "services", "target audience",
         "goals", "marketing goals", "market size", "clinic market", 
         "current marketing", "challenges", "clinic size", "vision", "business hours",
@@ -126,27 +123,22 @@ def chat_with_mona(user_input: UserMessage):
             return {"reply": future_reply}
 
     full_context = f"{profile.name}, a {profile.title}, working as a {profile.role}, wants to achieve: {profile.goal}."
-    final_prompt = f"""Context:
-{full_context}
+    prompt_base = f"Context:\n{full_context}\n\nUser question:\n{message}"
+    shortened_prompt = textwrap.shorten(prompt_base, width=1000, placeholder="...")
 
-User question:
-{message}
-
-Respond with high quality insights using Perplexity. Make sure the answer is:
-- Well-structured and rich in detail
-- Divided into clear sections with headings
-- Bullet points where helpful
-- Easy to use in visual or UI blocks
-
-This prompt style follows the top-performing strategy based on: https://docs.perplexity.ai/getting-started/overview
-"""
+    final_prompt = (
+        f"{shortened_prompt}\n\n"
+        "Respond with short and powerful insights using Perplexity. "
+        "Keep total response between 40–100 words. Make it concise, well-structured, bullet-pointed where helpful, "
+        "and clear enough to fit inside UI blocks."
+    )
 
     praise = (
-        "🤖 أنا مورفو ، وكيلة تسويق ذكية مبنية على تقنيات متقدمة. أجمع بين السرعة والدقة، وأقدر أوفر لك إجابات تسويقية فعالة وفورية.\n\n"
+        "🤖 أنا مورفو، وكيلة تسويق ذكية مبنية على تقنيات متقدمة. أقدر أوفر لك إجابات فعالة ومباشرة.\n\n"
         if "arabic" in profile.goal.lower() or any("\u0600" <= c <= "\u06FF" for c in message)
-        else
-        "🤖 I'm MORVO — a sharp, ROI-focused marketing agent powered by intelligent tech. I combine precision and speed to bring you powerful insights.\n\n"
+        else "🤖 I'm MORVO — ROI-focused and sharp. Let’s get straight to what matters.\n\n"
     )
+
     response = fetch_perplexity_insight.invoke(praise + final_prompt)
     return {"reply": response}
 
@@ -156,22 +148,17 @@ class CompanyRequest(BaseModel):
 
 @app.post("/360prep")
 def generate_360_report(req: CompanyRequest):
-    intro = "📊 Here's your AI-powered 360° marketing intelligence report powered by MORVO & Perplexity:\n\n"
-    prompt = f"""Generate a 360-degree marketing intelligence report using public web data for {req.company_name}.
+    intro = "📊 360° Snapshot by MORVO & Perplexity:\n\n"
+    prompt = f"""Give a short marketing snapshot for {req.company_name}.
 
-Return findings in these categories:
-- Company Overview
-- Content and Messaging
-- SEO & Web Performance
-- Engagement and Conversion
+Include:
 - Branding
-- Social Media & Campaigns
-- Competitor Analysis
-- Customer & Audience Insights
-- Downloadable Materials
-- Compliance & Legal
+- Content
+- Social Media
+- Website SEO
+- Competitor edge
 
-Make it easy to scan, well-formatted, and bullet-pointed.
+Keep it short, 40–100 words, bullet format, good for fast scan.
 """
     response = fetch_perplexity_insight.invoke(intro + prompt)
     return {"reply": response}
