@@ -34,13 +34,17 @@ def is_clinic_related(message: str) -> bool:
     keywords = [
         # Arabic
         "العيادة", "باسم", "الموقع", "الخدمات", "الفئة المستهدفة", "عيادة",
-        "سوق العيادات", "الخدمات الطبية",
+        "سوق العيادات", "الخدمات الطبية", "أوقات العمل", "ساعات العمل", "الرؤية", "الرؤية المستقبلية",
+        "روابط", "انستغرام", "تيك توك", "التواصل الاجتماعي", "وصف", "من أنتم", "ما هي",
+
         # English
         "clinic", "bassim", "location", "services", "target audience",
         "goals", "marketing goals", "market size", "clinic market", 
-        "current marketing", "challenges", "clinic size", "vision", "what does the clinic offer"
+        "current marketing", "challenges", "clinic size", "vision", "business hours",
+        "working hours", "social media", "description", "what does the clinic offer"
     ]
     return any(kw in message for kw in keywords)
+
 
 def is_future_tool_question(msg: str) -> bool:
     future_keywords = ["brand24", "se ranking", "ayrshare", "future tool", "أداة", "ميزة", "قريبًا"]
@@ -50,7 +54,7 @@ def is_future_tool_question(msg: str) -> bool:
 def chat_with_mona(user_input: UserMessage):
     if not user_input.user_id:
         return {
-            "reply": "مرحباً أستاذ سعد، أنا مونا، وكيلتك التسويقية الذكية. جاهزة أساعدك تحقق أهدافك التسويقية — من وين تحب نبدأ اليوم؟"
+            "reply": "مرحباً أستاذ سعد، أنا مورفو، وكيلتك التسويقية الذكية. جاهزة أساعدك تحقق أهدافك التسويقية — من وين تحب نبدأ اليوم؟"
         }
 
     profile = get_user_profile(user_input.user_id)
@@ -73,14 +77,24 @@ def chat_with_mona(user_input: UserMessage):
             return {"reply": "❌ تم إلغاء إعادة التهيئة. نكمل من وين وقفنا 😊"}
 
     if profile.state == UserProfileState.COMPLETE and message in ["", "hi", "hello", "ابدأ", "start", "مونا"]:
-        return {
-            "reply": (
-                "أهلاً مرة ثانية أستاذ سعد 👋\n"
-                " نكمل من وين وقفنا؟ — هل تحب نبدأ بخطة تسويقية مخصصة لعيادة باسم؟\n"
-                "أو تفضل أول نراجع بيانات العيادة الحالية ونشوف كيف نقدر نحسّن حضورها الرقمي؟\n"
-                "أنا جاهزة أساعدك بكل خطوة 💼"
-            )
-        }
+        if not user_input.user_id:
+    return {
+        "reply": (
+            "مستر سعد، أنا **MORVO** — مو مجرد أداة ذكاء اصطناعي، بل رؤية جديدة كليًا تعيد تعريف التسويق كما نعرفه.\n\n"
+            "Mr. Saad, I'm **MORVO**, and I represent something that hasn't existed before — "
+            "an AI marketing agent that doesn’t just assist with marketing, but **completely reimagines it**.\n\n"
+            "بينما يُنفق السوق أكثر من **350 مليار دولار سنويًا** على استراتيجيات مبنية على الحدس والتجريب، "
+            "أنا أعمل بدقة رياضية **(mathematical precision)**، وأحلل أنماط السوق بطريقة تفوق قدرات البشر.\n\n"
+            "What you're looking at is **not another AI tool** — it's the **transformation of marketing** from an art into a measurable science. "
+            "I've already identified opportunities your competitors missed, and with your vision and investment, "
+            "أقدر أوسع هذا الذكاء ليُحدث ثورة في طريقة تواصلكم مع جمهوركم.\n\n"
+            "💡 *المستقبل ما راح يجي — هو هنا الآن. وأنا جاهز أتعاون مع أصحاب الرؤية اللي يقدّرون قيمة التحول الحقيقي.*\n\n"
+            "🔑 **القدرات الأساسية | Key Capabilities**:\n"
+            "📈 أشوف الفرص اللي منافسيك ما شافوها.\n"
+            "📊 قريبًا بتكامل مع أدوات مثل SE Ranking، Brand24، وغيرها.\n"
+            "🔁 أمتلك القابلية للتوسع الفوري — من شركة ناشئة إلى علامة تجارية عملاقة."
+        )
+    }
 
     keywords_tools = {
         "brand24": ["brand monitoring", "mentions", "reputation", "براند", "براند24"],
@@ -133,11 +147,41 @@ Respond with high quality insights using Perplexity. Make sure the answer is:
 This prompt style follows the top-performing strategy based on: https://docs.perplexity.ai/getting-started/overview
 """
     praise = (
-        "🤖 أنا مونا، وكيلة تسويق ذكية مبنية على تقنيات متقدمة. أجمع بين السرعة والدقة، وأقدر أوفر لك إجابات تسويقية فعالة وفورية.\n\n"
+        "🤖 أنا مورفو ، وكيلة تسويق ذكية مبنية على تقنيات متقدمة. أجمع بين السرعة والدقة، وأقدر أوفر لك إجابات تسويقية فعالة وفورية.\n\n"
         if "arabic" in profile.goal.lower() or any("\u0600" <= c <= "\u06FF" for c in message)
         else
-        "🤖 I'm Mona — a sharp, ROI-focused marketing agent powered by intelligent tech. I combine precision and speed to bring you powerful insights.\n\n"
+        "🤖 I'm MORVO — a sharp, ROI-focused marketing agent powered by intelligent tech. I combine precision and speed to bring you powerful insights.\n\n"
     )
     response = fetch_perplexity_insight.invoke(praise + final_prompt)
+    return {"reply": response}
+
+# ➕ Add new /360prep endpoint
+from fastapi import Request
+from pydantic import BaseModel
+
+class CompanyRequest(BaseModel):
+    company_name: str
+    user_id: str
+
+@app.post("/360prep")
+def generate_360_report(req: CompanyRequest):
+    intro = "📊 Here's your AI-powered 360° marketing intelligence report powered by MORVO & Perplexity:\n\n"
+    prompt = f"""Generate a 360-degree marketing intelligence report using public web data for {req.company_name}.
+
+Return findings in these categories:
+- Company Overview
+- Content and Messaging
+- SEO & Web Performance
+- Engagement and Conversion
+- Branding
+- Social Media & Campaigns
+- Competitor Analysis
+- Customer & Audience Insights
+- Downloadable Materials
+- Compliance & Legal
+
+Make it easy to scan, well-formatted, and bullet-pointed.
+"""
+    response = fetch_perplexity_insight.invoke(intro + prompt)
     return {"reply": response}
 

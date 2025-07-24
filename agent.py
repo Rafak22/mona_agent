@@ -34,15 +34,15 @@ def respond_with_future_vision(message: str) -> str | None:
                 # Arabic praise version
                 return (
                     f"{future_response}\n\n"
-                    "💡 مونا دائماً في تطوّر — لأنني مبنية على تقنيات ذكية وقادرة على التكيف مع احتياجاتك بسرعة.\n"
-                    "🚀 هذه الميزة ستكون جاهزة قريبًا، وبأسلوبي الذكي والمبسط، راح تكون تجربة التسويق عندك مختلفة تماماً!"
+                    "💡 مورفو دائماً في تطوّر — لأنه مبني على تقنيات ذكية وقادر على التكيف مع احتياجاتك بسرعة.\n"
+                    "🚀 هذه الميزة ستكون جاهزة قريبًا، وبأسلوبه الذكي والمبسط، راح تكون تجربة التسويق عندك مختلفة تماماً!"
                 )
             else:
                 # English praise version
                 return (
                     f"{future_response}\n\n"
-                    "💡 I'm constantly upgrading — built with cutting-edge intelligence and designed to adapt fast.\n"
-                    "🚀 This feature is coming very soon, and with my smart conversational flow your marketing experience will feel revolutionary!"
+                    "💡 MORVO is constantly evolving — built with intelligent tech and designed to adapt to your marketing needs fast.\n"
+                    "🚀 This feature is coming soon, and with MORVO’s conversational flow, your marketing experience will feel truly next-gen!"
                 )
     return None
 

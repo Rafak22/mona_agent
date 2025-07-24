@@ -1,128 +1,151 @@
 {
-  "name": {
-    "en": "Bassim Clinic",
-    "ar": "عيادة باسم"
-  },
-  "location": {
-    "en": "Al Khobar, Saudi Arabia",
-    "ar": "الخبر، المملكة العربية السعودية"
-  },
-  "industry": "Dental and Cosmetic Health",
-  "description": {
-    "en": "Bassim Clinic is a specialized healthcare center focusing on dentistry and facial aesthetics. The clinic is known for combining medical expertise with a luxurious experience.",
-    "ar": "عيادة باسم هي مركز رعاية صحية متخصص يركز على طب الأسنان وجمال الوجه. تشتهر العيادة بدمج الخبرة الطبية مع تجربة فاخرة."
-  },
-  "services": {
-    "en": [
-      "General Dentistry",
-      "Orthodontics",
-      "Veneers and Hollywood Smile",
-      "Dental Implants",
-      "Facial Aesthetics",
-      "Laser Treatments",
-      "Skin Care and Fillers",
-      "Gum Treatment"
-    ],
-    "ar": [
-      "طب الأسنان العام",
-      "تقويم الأسنان",
-      "ابتسامة هوليود والقشور التجميلية",
-      "زراعة الأسنان",
-      "تجميل الوجه",
-      "علاجات الليزر",
-      "العناية بالبشرة والفيلرز",
-      "علاج اللثة"
-    ]
-  },
-  "audience_segments": {
-    "en": [
-      "High-income individuals",
-      "Young professionals seeking cosmetic improvements",
-      "Patients seeking long-term dental care",
-      "Beauty-conscious clients"
-    ],
-    "ar": [
-      "أفراد ذوي دخل مرتفع",
-      "مهنيون شباب يبحثون عن تحسينات تجميلية",
-      "مرضى يبحثون عن رعاية طويلة الأمد للأسنان",
-      "عملاء يهتمون بالجمال والمظهر"
-    ]
-  },
-  "goals": {
-    "en": [
-      "Become a leading brand in cosmetic dentistry in Saudi Arabia",
-      "Increase digital engagement and awareness",
-      "Expand influencer-driven marketing",
-      "Build stronger brand identity through aesthetics and storytelling"
-    ],
-    "ar": [
-      "أن تصبح علامة رائدة في تجميل الأسنان في السعودية",
-      "زيادة التفاعل الرقمي والوعي بالعلامة",
-      "توسيع التسويق عبر المؤثرين",
-      "بناء هوية علامة أقوى من خلال الجمال وسرد القصص"
-    ]
-  },
-  "clinic_size": {
-    "en": "Mid-sized luxury clinic with premium facilities and expert staff",
-    "ar": "عيادة فاخرة متوسطة الحجم مع مرافق راقية وطاقم خبير"
-  },
-  "website": "https://www.bassim.sa/",
-  "social_media": {
-    "instagram": "https://www.instagram.com/bassim.clinic/",
-    "snapchat": "https://www.snapchat.com/add/bassimclinic"
-  },
-  "current_marketing": {
-    "channels": {
+    "name": {
+      "en": "Bassim Medical Complex",
+      "ar": "مجمع بسيم الطبي التخصصي الرقمي"
+    },
+    "location": {
+      "en": "King Fahad Road, Dammam, Saudi Arabia",
+      "ar": "طريق الملك فهد، الدمام، المملكة العربية السعودية"
+    },
+    "business_hours": {
+      "en": "Saturday–Thursday, 9:00AM–9:00PM",
+      "ar": "من السبت إلى الخميس، من الساعة 9:00 صباحًا إلى 9:00 مساءً"
+    },
+    "industry": "Dental and Dermatology",
+    "description": {
+      "en": "Bassim Medical Complex specializes in dental and dermatological care. It combines medical expertise with a luxurious patient experience in Dammam.",
+      "ar": "مجمع بسيم الطبي متخصص في الرعاية الجلدية وطب الأسنان، ويجمع بين الخبرة الطبية والتجربة الفاخرة للمريض في الدمام."
+    },
+    "services": {
       "en": [
-        "Instagram (highly active)",
-        "Snapchat",
-        "In-clinic branding and ambiance",
-        "Influencer marketing"
+        "General Dentistry",
+        "Pediatric Dentistry",
+        "Orthodontics",
+        "Dental Implants",
+        "Hollywood Smile",
+        "Dermatology",
+        "Laser Treatments (Elite, Splendor)",
+        "Skin Care",
+        "Fillers",
+        "Gum Treatment"
       ],
       "ar": [
-        "إنستغرام (نشط جدًا)",
-        "سناب شات",
-        "العلامة التجارية داخل العيادة والأجواء العامة",
-        "التسويق عبر المؤثرين"
+        "طب الأسنان العام",
+        "طب أسنان الأطفال",
+        "تقويم الأسنان",
+        "زراعة الأسنان",
+        "ابتسامة هوليود",
+        "الجلدية",
+        "علاجات الليزر (Elite, Splendor)",
+        "العناية بالبشرة",
+        "الفيلرز",
+        "علاج اللثة"
       ]
     },
-    "strengths": {
+    "audience_segments": {
       "en": [
-        "Strong visual aesthetic",
-        "Celebrity endorsements",
-        "Luxury experience branding"
+        "High-income individuals",
+        "Patients seeking advanced dental or skin care",
+        "Families in Dammam",
+        "Beauty and aesthetics-conscious clients"
       ],
       "ar": [
-        "هوية بصرية قوية",
-        "دعم من المشاهير",
-        "علامة تجارية ترتكز على تجربة فاخرة"
+        "أفراد ذوي دخل مرتفع",
+        "المرضى الباحثون عن رعاية متقدمة للأسنان أو الجلد",
+        "العائلات في الدمام",
+        "العملاء المهتمون بالجمال والمظهر"
       ]
     },
-    "challenges": {
+    "goals": {
       "en": [
-        "Converting impressions to bookings",
-        "Expanding outside Al Khobar region",
-        "Communicating value beyond aesthetics"
+        "Lead the cosmetic dental market in Dammam",
+        "Expand reach to Eastern Province",
+        "Enhance digital engagement and SEO presence",
+        "Strengthen social proof and visual branding"
       ],
       "ar": [
-        "تحويل الانطباعات إلى حجوزات",
-        "التوسع خارج منطقة الخبر",
-        "إيصال القيمة خارج الجوانب الجمالية"
+        "الريادة في سوق تجميل الأسنان في الدمام",
+        "التوسع في المنطقة الشرقية",
+        "تعزيز التفاعل الرقمي والحضور عبر محركات البحث",
+        "تعزيز المصداقية البصرية وسمعة العيادة"
       ]
+    },
+    "clinic_size": {
+      "en": "Mid-sized luxury clinic with expert staff",
+      "ar": "عيادة فاخرة متوسطة الحجم بطاقم طبي متخصص"
+    },
+    "website": "https://www.bassim.sa/",
+    "social_media": {
+      "instagram": "https://www.instagram.com/bassim.clinic/",
+      "tiktok": "https://www.tiktok.com/@bassim.clinic"
+    },
+    "current_marketing": {
+      "channels": {
+        "en": [
+          "Instagram",
+          "TikTok",
+          "In-clinic branding",
+          "Influencer collaborations"
+        ],
+        "ar": [
+          "إنستغرام",
+          "تيك توك",
+          "الهوية البصرية داخل العيادة",
+          "التعاون مع المؤثرين"
+        ]
+      },
+      "strengths": {
+        "en": [
+          "High-quality visual content",
+          "Luxury experience design",
+          "Strong reputation in Dammam"
+        ],
+        "ar": [
+          "محتوى بصري عالي الجودة",
+          "تصميم تجربة فاخرة",
+          "سمعة قوية في الدمام"
+        ]
+      },
+      "challenges": {
+        "en": [
+          "Converting social followers into bookings",
+          "Expanding beyond Dammam",
+          "Creating strong differentiation from competitors"
+        ],
+        "ar": [
+          "تحويل المتابعين إلى حجوزات",
+          "التوسع خارج الدمام",
+          "خلق تميز واضح عن المنافسين"
+        ]
+      }
+    },
+    "competitors": {
+      "dental": [
+        "Smile Secret Clinics",
+        "Denta Derma",
+        "AlMeswak Dental & Derma Clinic",
+        "Dental House Clinics"
+      ],
+      "dermatology": [
+        "Central Care Medical Center",
+        "Mouwasat Hospital Dammam",
+        "Shifa Al Khobar Medical Center",
+        "Saudi German Hospital Dammam"
+      ]
+    },
+    "industry_insights": {
+      "market_trend": {
+        "en": "Cosmetic and dental healthcare demand is rising in Saudi Arabia due to social media influence and growing aesthetic awareness.",
+        "ar": "يزداد الطلب على خدمات التجميل والأسنان في السعودية بفعل تأثير وسائل التواصل الاجتماعي والوعي المتزايد بالجمال."
+      },
+      "clinic_market_size_saudi": {
+        "en": "Expected to grow at 7–9% CAGR by 2028.",
+        "ar": "من المتوقع أن ينمو بمعدل سنوي مركب يتراوح بين 7-9٪ حتى عام 2028."
+      }
+    },
+    "vision": {
+      "en": "To redefine luxury and effectiveness in dental and skincare in the GCC.",
+      "ar": "إعادة تعريف الفخامة والفعالية في خدمات الأسنان والعناية بالبشرة في الخليج."
     }
-  },
-  "industry_insights": {
-    "market_trend": {
-      "en": "Cosmetic dentistry and aesthetic clinics are rapidly growing in Saudi Arabia, driven by social media influence and lifestyle shifts.",
-      "ar": "تجميل الأسنان والعيادات التجميلية تنمو بسرعة في السعودية، بدافع من تأثير وسائل التواصل الاجتماعي وتغيرات نمط الحياة."
-    },
-    "clinic_market_size_saudi": {
-      "en": "The cosmetic and dental health market in Saudi Arabia is expected to grow at 7-9% CAGR through 2028.",
-      "ar": "من المتوقع أن ينمو سوق التجميل وصحة الأسنان في السعودية بمعدل نمو سنوي مركب يتراوح بين 7-9٪ حتى عام 2028."
-    }
-  },
-  "vision": {
-    "en": "To set a new standard for luxurious and professional dental and facial aesthetic care in the GCC region.",
-    "ar": "وضع معيار جديد للرعاية الفاخرة والمهنية في تجميل الأسنان والوجه في منطقة الخليج."
   }
-} 
+  
