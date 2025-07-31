@@ -1,4 +1,3 @@
-import json
 import logging
 import textwrap
 from fastapi import FastAPI, Request
@@ -7,16 +6,16 @@ from pydantic import BaseModel
 from schema import UserMessage, UserProfileState, UserProfile
 from memory_store import get_user_profile, update_user_profile, users, user_memory
 from tools.perplexity_tool import fetch_perplexity_insight
-from tools.clinic_tool import fetch_clinic_info
+from tools.clinic_tool import fetch_clinic_info_from_db
+from tools.mentions_tool import fetch_mentions_summary
+from tools.seo_tool import fetch_seo_signals_summary
+from tools.posts_tool import fetch_posts_summary
 from agent import respond_with_future_vision
 from dotenv import load_dotenv
 
 # Load .env and logging
 load_dotenv()
 logging.basicConfig(level=logging.INFO)
-
-with open("clinic_data.json", "r", encoding="utf-8") as f:
-    clinic_data = json.load(f)
 
 app = FastAPI()
 
@@ -94,26 +93,37 @@ def chat_with_mona(user_input: UserMessage):
         }
 
     keywords_tools = {
-        "brand24": ["brand monitoring", "mentions", "reputation", "براند", "براند24"],
-        "se ranking": ["seo", "keyword tracking", "تحليل الكلمات", "تصدر جوجل", "تحسين المحركات"],
-        "ayrshare": ["post on social media", "ayrshare", "جدولة", "نشر", "سوشيال ميديا"],
+        "brand24": {
+            "keywords": ["brand monitoring", "mentions", "reputation", "براند", "براند24", "ذكر", "السمعة"],
+            "function": fetch_mentions_summary
+        },
+        "se ranking": {
+            "keywords": ["seo", "keyword tracking", "تحليل الكلمات", "تصدر جوجل", "تحسين المحركات", "محركات البحث"],
+            "function": fetch_seo_signals_summary
+        },
+        "ayrshare": {
+            "keywords": ["post on social media", "ayrshare", "جدولة", "نشر", "سوشيال ميديا", "المنشورات"],
+            "function": fetch_posts_summary
+        }
     }
 
-    for tool, keywords in keywords_tools.items():
-        if any(kw in message for kw in keywords):
-            return {
-                "reply": (
-                    "✨ الميزة اللي طلبتها ما تم تفعيلها بعد، يا أستاذ سعد.\n\n"
-                    "لكن قريبًا بإذن الله راح أقدر أساعدك باستخدام أدوات متخصصة مثل:\n"
-                    "- Brand24\n"
-                    "- SE Ranking\n"
-                    "- Ayrshare\n\n"
-                    "📢 تابعني عشان توصلك أول بأول التحديثات القادمة!"
-                )
-            }
+    for tool, config in keywords_tools.items():
+        if any(kw in message for kw in config["keywords"]):
+            try:
+                result = config["function"]()
+                if "عذراً" in result or "لم يتم العثور" in result:
+                    return {
+                        "reply": result + "\n\n📊 سأواصل مراقبة وتحليل البيانات وإخبارك بأي تحديثات مهمة."
+                    }
+                return {"reply": result}
+            except Exception as e:
+                print(f"Error using {tool}: {e}")
+                return {
+                    "reply": f"⚠️ عذراً، حدث خطأ أثناء محاولة جلب بيانات {tool}. سأحاول مرة أخرى قريباً."
+                }
 
     if is_clinic_related(message):
-        clinic_reply = fetch_clinic_info.run(message)
+        clinic_reply = fetch_clinic_info_from_db(message)
         if "❓" not in clinic_reply and "more clarity" not in clinic_reply.lower():
             return {"reply": clinic_reply}
 
