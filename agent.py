@@ -1,6 +1,6 @@
 from langchain.agents import initialize_agent, AgentType
 from tools.perplexity_tool import fetch_perplexity_insight
-from tools.clinic_tool import fetch_clinic_info  # ✅ New import
+from tools.clinic_tool import fetch_clinic_info_from_db  # ✅ Updated import
 from memory_store import get_user_memory
 from schema import UserProfile
 import re
@@ -49,7 +49,7 @@ def respond_with_future_vision(message: str) -> str | None:
 def create_mona_agent(user_id: str):
     tools = [
         fetch_perplexity_insight,
-        fetch_clinic_info  # ✅ Add clinic info tool
+        fetch_clinic_info_from_db  # ✅ Updated clinic info tool
     ]
     memory = get_user_memory(user_id)
 
