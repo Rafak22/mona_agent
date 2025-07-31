@@ -1,15 +1,12 @@
 import logging
 import textwrap
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from schema import UserMessage, UserProfileState, UserProfile
 from memory_store import get_user_profile, update_user_profile, users, user_memory
 from tools.perplexity_tool import fetch_perplexity_insight
-from tools.clinic_tool import fetch_clinic_info_from_db
-from tools.mentions_tool import fetch_mentions_summary
-from tools.seo_tool import fetch_seo_signals_summary
-from tools.posts_tool import fetch_posts_summary
+from tools.almarai_tool import almarai_tool
 from agent import respond_with_future_vision
 from dotenv import load_dotenv
 
@@ -30,22 +27,6 @@ app.add_middleware(
 @app.get("/")
 def read_root():
     return {"message": "👋 Mona is ready to help you 3x your ROI!"}
-
-def is_clinic_related(message: str) -> bool:
-    keywords = [
-        "العيادة", "باسم", "الموقع", "الخدمات", "الفئة المستهدفة", "عيادة",
-        "سوق العيادات", "الخدمات الطبية", "أوقات العمل", "ساعات العمل", "الرؤية", "الرؤية المستقبلية",
-        "روابط", "انستغرام", "تيك توك", "التواصل الاجتماعي", "وصف", "من أنتم", "ما هي",
-        "clinic", "bassim", "location", "services", "target audience",
-        "goals", "marketing goals", "market size", "clinic market", 
-        "current marketing", "challenges", "clinic size", "vision", "business hours",
-        "working hours", "social media", "description", "what does the clinic offer"
-    ]
-    return any(kw in message for kw in keywords)
-
-def is_future_tool_question(msg: str) -> bool:
-    future_keywords = ["brand24", "se ranking", "ayrshare", "future tool", "أداة", "ميزة", "قريبًا"]
-    return any(tool in msg for tool in future_keywords)
 
 @app.post("/chat")
 def chat_with_mona(user_input: UserMessage):
@@ -87,51 +68,22 @@ def chat_with_mona(user_input: UserMessage):
                 "💡 *المستقبل ما راح يجي — هو هنا الآن. وأنا جاهز أتعاون مع أصحاب الرؤية اللي يقدّرون قيمة التحول الحقيقي.*\n\n"
                 "🔑 **القدرات الأساسية | Key Capabilities**:\n"
                 "📈 أشوف الفرص اللي منافسيك ما شافوها.\n"
-                "📊 قريبًا بتكامل مع أدوات مثل SE Ranking، Brand24، وغيرها.\n"
+                "📊 أتكامل مع بيانات السوق الحقيقية مثل بيانات المراعي.\n"
                 "🔁 أمتلك القابلية للتوسع الفوري — من شركة ناشئة إلى علامة تجارية عملاقة."
             )
         }
 
-    keywords_tools = {
-        "brand24": {
-            "keywords": ["brand monitoring", "mentions", "reputation", "براند", "براند24", "ذكر", "السمعة"],
-            "function": fetch_mentions_summary
-        },
-        "se ranking": {
-            "keywords": ["seo", "keyword tracking", "تحليل الكلمات", "تصدر جوجل", "تحسين المحركات", "محركات البحث"],
-            "function": fetch_seo_signals_summary
-        },
-        "ayrshare": {
-            "keywords": ["post on social media", "ayrshare", "جدولة", "نشر", "سوشيال ميديا", "المنشورات"],
-            "function": fetch_posts_summary
-        }
-    }
+    # Check roadmap keywords
+    future_reply = respond_with_future_vision(message)
+    if future_reply:
+        return {"reply": future_reply}
 
-    for tool, config in keywords_tools.items():
-        if any(kw in message for kw in config["keywords"]):
-            try:
-                result = config["function"]()
-                if "عذراً" in result or "لم يتم العثور" in result:
-                    return {
-                        "reply": result + "\n\n📊 سأواصل مراقبة وتحليل البيانات وإخبارك بأي تحديثات مهمة."
-                    }
-                return {"reply": result}
-            except Exception as e:
-                print(f"Error using {tool}: {e}")
-                return {
-                    "reply": f"⚠️ عذراً، حدث خطأ أثناء محاولة جلب بيانات {tool}. سأحاول مرة أخرى قريباً."
-                }
+    # Check Almarai data-related queries
+    almarai_reply = almarai_tool.invoke(message)
+    if almarai_reply and "❓" not in almarai_reply and "more clarity" not in almarai_reply.lower():
+        return {"reply": almarai_reply}
 
-    if is_clinic_related(message):
-        clinic_reply = fetch_clinic_info_from_db(message)
-        if "❓" not in clinic_reply and "more clarity" not in clinic_reply.lower():
-            return {"reply": clinic_reply}
-
-    if is_future_tool_question(message):
-        future_reply = respond_with_future_vision(message)
-        if future_reply and ("قريبًا" in future_reply or "coming soon" in future_reply):
-            return {"reply": future_reply}
-
+    # Otherwise, use Perplexity
     full_context = f"{profile.name}, a {profile.title}, working as a {profile.role}, wants to achieve: {profile.goal}."
     prompt_base = f"Context:\n{full_context}\n\nUser question:\n{message}"
     shortened_prompt = textwrap.shorten(prompt_base, width=1000, placeholder="...")
@@ -152,6 +104,7 @@ def chat_with_mona(user_input: UserMessage):
     response = fetch_perplexity_insight.invoke(praise + final_prompt)
     return {"reply": response}
 
+# For the 360° feature (unchanged)
 class CompanyRequest(BaseModel):
     company_name: str
     user_id: str

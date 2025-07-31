@@ -1,22 +1,22 @@
 from datetime import datetime
 from .supabase_client import supabase
 
-def fetch_posts_summary() -> str:
+def fetch_posts_summary(limit: int = 5) -> str:
     """
-    Fetches the latest 5 social media posts from Supabase and formats them for display.
+    Fetches the latest social media posts from Supabase and formats them for display.
     """
     try:
         result = supabase.table("posts") \
             .select("*") \
             .order("created_at", desc=True) \
-            .limit(5) \
+            .limit(limit) \
             .execute()
 
         if not result.data:
             return "📱 لم يتم العثور على أي منشورات حديثة."
 
         posts = result.data
-        summary_parts = ["📲 آخر تحليل للمنشورات الاجتماعية (Ayrshare):\n"]
+        summary_parts = ["📲 **آخر منشورات الوسائط الاجتماعية (Ayrshare):**\n"]
 
         platform_icons = {
             "instagram": "📸",
@@ -27,14 +27,24 @@ def fetch_posts_summary() -> str:
         }
 
         for post in posts:
-            date = datetime.fromisoformat(post["created_at"]).strftime("%Y-%m-%d")
-            platforms = [f"{platform_icons.get(p, '🌐')} {p}" for p in post["platforms"]]
-            
+            created_at = post.get("created_at", "")
+            content = post.get("content", "لا يوجد محتوى")
+            engagement = post.get("engagement", "؟")
+            reach = post.get("reach", "؟")
+            platforms = post.get("platforms") or []
+
+            try:
+                date = datetime.fromisoformat(created_at).strftime("%Y-%m-%d")
+            except:
+                date = "تاريخ غير معروف"
+
+            formatted_platforms = ", ".join([f"{platform_icons.get(p, '🌐')} {p}" for p in platforms])
+
             summary_parts.append(
-                f"• {date} | {', '.join(platforms)}\n"
-                f"  - المحتوى: {post['content'][:100]}...\n"
-                f"  - التفاعل: {post['engagement']} 👥\n"
-                f"  - الوصول: {post['reach']} 👀\n"
+                f"• **{date}** | {formatted_platforms}\n"
+                f"  - ✍️ المحتوى: {content[:100]}{'...' if len(content) > 100 else ''}\n"
+                f"  - 👥 التفاعل: {engagement}\n"
+                f"  - 👀 الوصول: {reach}\n"
             )
 
         return "\n".join(summary_parts)

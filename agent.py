@@ -1,72 +1,67 @@
-from langchain.agents import initialize_agent, AgentType
 from tools.perplexity_tool import fetch_perplexity_insight
-from tools.clinic_tool import fetch_clinic_info_from_db  # ✅ Updated import
+from tools.almarai_tool import almarai_tool
 from memory_store import get_user_memory
 from schema import UserProfile
+from langchain.agents import initialize_agent, AgentType
+from tools.supabase_client import supabase
 import re
 
-# Placeholder for FUTURE_FEATURES if not already defined
-try:
-    FUTURE_FEATURES
-except NameError:
-    FUTURE_FEATURES = {
-        "brand24": "Brand24 integration is coming soon!",
-        "se ranking": "SE Ranking integration is on the roadmap!",
-        "ayrshare": "Ayrshare social posting will be available soon!",
-        "براند24": "قريبًا ستتوفر ميزة Brand24!",
-        "تصدر جوجل": "ميزة SE Ranking قادمة في الطريق!",
-        "سوشيال ميديا": "ميزة Ayrshare للنشر الذكي ستتوفر قريبًا!",
-    }
-
 def is_arabic(text: str) -> bool:
-    """Quick check: does the string contain Arabic letters?"""
     return bool(re.search(r'[\u0600-\u06FF]', text))
 
 def respond_with_future_vision(message: str) -> str | None:
     """
-    If the user mentions a capability tied to Brand24, SE Ranking, or Ayrshare,
-    return an enthusiastic, self-praising roadmap reply in the same language.
+    Dynamically fetches roadmap replies from Supabase based on keywords.
     """
-    lowered = message.lower()
-    for keyword, future_response in FUTURE_FEATURES.items():
-        if keyword in lowered:
-            if is_arabic(message):
-                # Arabic praise version
+    try:
+        response = supabase.table("features_roadmap").select("*").execute()
+        rows = response.data or []
+        lowered_message = message.lower()
+        lang = "ar" if is_arabic(message) else "en"
+
+        for row in rows:
+            keyword = row.get("keyword", "").lower()
+            if keyword in lowered_message:
+                roadmap_msg = row.get(f"response_{lang}")
+                if not roadmap_msg:
+                    continue
                 return (
-                    f"{future_response}\n\n"
-                    "💡 مورفو دائماً في تطوّر — لأنه مبني على تقنيات ذكية وقادر على التكيف مع احتياجاتك بسرعة.\n"
-                    "🚀 هذه الميزة ستكون جاهزة قريبًا، وبأسلوبه الذكي والمبسط، راح تكون تجربة التسويق عندك مختلفة تماماً!"
+                    f"{roadmap_msg}\n\n"
+                    + (
+                        "💡 مورفو دائماً في تطوّر — لأنه مبني على تقنيات ذكية وقادر على التكيف مع احتياجاتك بسرعة.\n"
+                        "🚀 هذه الميزة ستكون جاهزة قريبًا، وبأسلوبه الذكي والمبسط، راح تكون تجربة التسويق عندك مختلفة تماماً!"
+                        if lang == "ar"
+                        else
+                        "💡 MORVO is constantly evolving — built with intelligent tech and designed to adapt to your marketing needs fast.\n"
+                        "🚀 This feature is coming soon, and with MORVO's conversational flow, your marketing experience will feel truly next-gen!"
+                    )
                 )
-            else:
-                # English praise version
-                return (
-                    f"{future_response}\n\n"
-                    "💡 MORVO is constantly evolving — built with intelligent tech and designed to adapt to your marketing needs fast.\n"
-                    "🚀 This feature is coming soon, and with MORVO’s conversational flow, your marketing experience will feel truly next-gen!"
-                )
+    except Exception as e:
+        print("❌ Error fetching roadmap reply from Supabase:", e)
+    
     return None
 
 def create_mona_agent(user_id: str):
     tools = [
         fetch_perplexity_insight,
-        fetch_clinic_info_from_db  # ✅ Updated clinic info tool
+        almarai_tool  # Custom Supabase-based tool
     ]
     memory = get_user_memory(user_id)
 
     return initialize_agent(
         tools=tools,
-        llm=None,  # Perplexity is used externally
+        llm=None,
         agent=AgentType.ZERO_SHOT_REACT_DESCRIPTION,
         verbose=True,
         memory=memory,
     )
 
 def run_agent(user_id: str, message: str, profile: UserProfile) -> str:
-    # Check if it's a question about future tool features
+    # Check for roadmap reply
     future_reply = respond_with_future_vision(message)
     if future_reply:
         return future_reply
 
-    # Run Mona agent with LangChain tools (Perplexity + Clinic)
+    # Fallback to Almarai tools or Perplexity
     agent = create_mona_agent(user_id)
     return agent.run(message)
