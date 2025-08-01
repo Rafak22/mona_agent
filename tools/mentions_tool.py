@@ -3,50 +3,45 @@ from .supabase_client import supabase
 
 def fetch_mentions_summary() -> str:
     """
-    Fetches latest brand mentions from the mentions table.
-    Schema:
-    - mention_text: string
-    - sentiment: string (positive, neutral, negative)
-    - sentiment_score: float (-1.0 to 1.0)
-    - platform: string
-    - author: string
-    - engagement: int
-    - published_date: date
+    Fetches latest brand mentions with detailed error reporting.
     """
     try:
-        result = supabase.table("mentions") \
+        response = supabase.table("mentions") \
             .select("mention_text,sentiment,sentiment_score,platform,author,engagement,published_date") \
             .order("published_date", desc=True) \
             .limit(5) \
             .execute()
 
-        if not result.data:
-            return "لم يتم العثور على أي ذكر حديث للعلامة التجارية."
+        if not response.data:
+            return "📭 لا توجد بيانات متاحة حالياً من Supabase."
 
-        mentions = result.data
-        summary_parts = ["📊 آخر تحليل لذكر العلامة التجارية:\n"]
+        summaries = []
+        for item in response.data:
+            try:
+                date = datetime.fromisoformat(item.get("published_date", "")).strftime("%Y-%m-%d")
+                sentiment = {
+                    "positive": "✨ إيجابي",
+                    "negative": "⚠️ سلبي",
+                    "neutral": "📝 محايد"
+                }.get(item.get("sentiment"), "❓ غير محدد")
 
-        for mention in mentions:
-            date = datetime.fromisoformat(mention["published_date"]).strftime("%Y-%m-%d")
-            sentiment = {
-                "positive": "✨ إيجابي",
-                "negative": "⚠️ سلبي",
-                "neutral": "📝 محايد"
-            }.get(mention["sentiment"], "📝 محايد")
-            
-            score = mention["sentiment_score"]
-            sentiment_emoji = "🟢" if score > 0.3 else "🔴" if score < -0.3 else "⚪"
+                summaries.append(
+                    f"• {date} | {sentiment}\n"
+                    f"👤 {item.get('author', 'مجهول')} على {item.get('platform', 'غير معروف')}:\n"
+                    f"💬 {item.get('mention_text', '[لا يوجد نص]')[:100]}...\n"
+                    f"📊 التفاعل: {item.get('engagement', '0')} 👥"
+                )
+            except KeyError as ke:
+                print(f"🔍 Missing field in mention data: {ke}")
+                print(f"🔍 Available fields: {item.keys()}")
+                summaries.append("⚠️ بيانات غير مكتملة لهذا المنشور")
+            except Exception as item_e:
+                print(f"🔥 Error processing mention: {item_e}")
+                summaries.append("❌ خطأ في معالجة هذا المنشور")
 
-            summary_parts.append(
-                f"• {date} | {sentiment} {sentiment_emoji}\n"
-                f"  - المنصة: {mention['platform']}\n"
-                f"  - الكاتب: {mention['author']}\n"
-                f"  - المحتوى: {mention['mention_text'][:100]}...\n"
-                f"  - التفاعل: {mention['engagement']} 👥\n"
-            )
-
-        return "\n".join(summary_parts)
+        return "\n\n".join(summaries) if summaries else "📭 لم نتمكن من معالجة أي بيانات."
 
     except Exception as e:
-        print(f"Error fetching mentions: {e}")
-        return "عذراً، حدث خطأ أثناء جلب بيانات ذكر العلامة التجارية."
+        error_msg = f"🔥 Supabase fetch error: {str(e)}"
+        print(error_msg)
+        return f"❌ فشل في الاتصال بـ Supabase:\n{error_msg}"

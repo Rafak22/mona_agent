@@ -1,4 +1,3 @@
-from tools.perplexity_tool import fetch_perplexity_insight
 from tools.mentions_tool import fetch_mentions_summary
 from tools.posts_tool import fetch_posts_summary
 from tools.seo_tool import fetch_seo_signals_summary
@@ -44,30 +43,22 @@ def route_query(message: str) -> str | None:
 
 def run_agent(user_id: str, message: str, profile: UserProfile) -> str:
     """
-    Simple routing: try Supabase tools first, then fallback to Perplexity.
+    Simple routing: try Supabase tools first, Perplexity temporarily disabled.
     """
     # Try Supabase tools first
     tool_response = route_query(message)
     if tool_response:
         return tool_response
 
-    # Fallback to Perplexity
-    try:
-        prompt = f"""
-You are MORVO, analyzing Almarai's marketing data. The user asked: "{message}"
-
-Focus on:
-- Brand mentions and sentiment
-- Social media performance
-- SEO and keyword rankings
-
-Keep it short and data-focused.
-"""
-        return fetch_perplexity_insight.invoke(prompt)
-    except Exception as e:
-        print(f"Error: {e}")
-        return (
-            "عذراً، حدث خطأ. هل يمكنك إعادة صياغة سؤالك؟"
-            if is_arabic(message) else
-            "Sorry, there was an error. Could you rephrase your question?"
-        )
+    # Perplexity temporarily disabled
+    return (
+        "⚠️ عذراً، لا يمكنني الإجابة على هذا السؤال حالياً. الرجاء السؤال عن:\n"
+        "• ذكر العلامة التجارية والسمعة\n"
+        "• المنشورات ووسائل التواصل\n"
+        "• تحليلات SEO والكلمات المفتاحية"
+        if is_arabic(message) else
+        "⚠️ Sorry, I can only answer questions about:\n"
+        "• Brand mentions and reputation\n"
+        "• Social media posts and engagement\n"
+        "• SEO and keyword analytics"
+    )
