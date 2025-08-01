@@ -1,5 +1,4 @@
 import logging
-import textwrap
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -65,11 +64,11 @@ def chat_with_mona(user_input: UserMessage):
             )
         }
 
-    # Route message through agent
+    # Route through simplified agent
     response = run_agent(user_input.user_id, message, profile)
     return {"reply": response}
 
-# For the 360° feature
+# 360° feature (unchanged)
 class CompanyRequest(BaseModel):
     company_name: str
     user_id: str

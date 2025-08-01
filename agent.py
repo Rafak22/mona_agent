@@ -2,11 +2,7 @@ from tools.perplexity_tool import fetch_perplexity_insight
 from tools.almarai_mentions_tool import fetch_mentions_summary
 from tools.almarai_seo_tool import fetch_seo_signals_summary
 from tools.almarai_posts_tool import fetch_posts_summary
-from memory_store import get_user_memory
 from schema import UserProfile
-from langchain.agents import AgentExecutor, create_react_agent
-from langchain.tools import Tool
-from langchain.chat_models import ChatOpenAI
 import re
 
 def is_arabic(text: str) -> bool:
@@ -15,77 +11,51 @@ def is_arabic(text: str) -> bool:
 
 def route_almarai_query(message: str) -> str | None:
     """
-    Routes Almarai-related queries to the appropriate tool based on keywords.
+    Routes Almarai-related queries to the appropriate Supabase tool based on keywords.
+    Returns None if no matching tool is found.
     """
     message = message.lower().strip()
-
-    # Keywords for different data types
-    mentions_keywords = [
-        "براند", "السمعة", "ذكر", "brand mentions", "reputation", "brand24"
-    ]
-    posts_keywords = [
-        "منشور", "المنشورات", "السوشيال", "وسائل التواصل", "نشر", "محتوى", 
-        "ayrshare", "post", "social media"
-    ]
-    seo_keywords = [
-        "تحسين محركات", "seo", "تحليل الكلمات", "ترتيب", "تصدر", "البحث", 
-        "موقع", "se ranking", "keyword ranking"
-    ]
-
-    if any(kw in message for kw in mentions_keywords):
+    
+    # Brand mentions and reputation
+    if any(kw in message for kw in ["براند", "السمعة", "brand mentions", "ذكر", "سمعة", "reputation"]):
         return fetch_mentions_summary()
-    elif any(kw in message for kw in posts_keywords):
+    
+    # Social media and content
+    if any(kw in message for kw in ["social", "منشور", "محتوى", "وسائل التواصل", "تفاعل", "engagement"]):
         return fetch_posts_summary()
-    elif any(kw in message for kw in seo_keywords):
+    
+    # SEO and search rankings
+    if any(kw in message for kw in ["seo", "keywords", "تحسين", "ترتيب", "محركات البحث", "كلمات"]):
         return fetch_seo_signals_summary()
     
     return None
 
-def create_mona_agent(user_id: str):
-    """
-    Creates a LangChain agent using the modern AgentExecutor pattern.
-    """
-    # Define tools with descriptions
-    tools = [
-        Tool(
-            name="perplexity_insight",
-            func=fetch_perplexity_insight.invoke,
-            description="Use this tool for general marketing insights and analysis."
-        )
-    ]
-
-    # Initialize LLM with low temperature for more focused responses
-    llm = ChatOpenAI(temperature=0)
-
-    # Create the agent with React framework
-    agent = create_react_agent(llm=llm, tools=tools)
-
-    # Wrap in executor with memory
-    memory = get_user_memory(user_id)
-    agent_executor = AgentExecutor(
-        agent=agent,
-        tools=tools,
-        memory=memory,
-        verbose=True,
-        handle_parsing_errors=True
-    )
-
-    return agent_executor
-
 def run_agent(user_id: str, message: str, profile: UserProfile) -> str:
     """
-    Main entry point for handling user queries.
-    First tries to route Almarai-specific queries, then falls back to Perplexity.
+    Simple routing logic: try Supabase tools first, then fallback to Perplexity.
     """
-    # Try Almarai-specific routing first
+    # Try Supabase tools first
     almarai_reply = route_almarai_query(message)
     if almarai_reply:
         return almarai_reply
 
-    # Fallback to general Perplexity queries
-    agent = create_mona_agent(user_id)
+    # Fallback to Perplexity
     try:
-        return agent.invoke({"input": message})["output"]
+        prompt = f"""
+You are MORVO, Almarai's marketing assistant. The user asked: "{message}"
+
+Focus on marketing insights related to:
+- Brand reputation and mentions
+- Social media performance
+- SEO and search visibility
+
+Keep your response short, clear, and data-focused.
+"""
+        return fetch_perplexity_insight.invoke(prompt)
     except Exception as e:
-        print(f"Error in agent execution: {e}")
-        return "عذراً، حدث خطأ في معالجة طلبك. هل يمكنك إعادة صياغة السؤال بطريقة مختلفة؟"
+        print(f"Error: {e}")
+        return (
+            "عذراً، حدث خطأ. هل يمكنك إعادة صياغة سؤالك؟"
+            if is_arabic(message) else
+            "Sorry, there was an error. Could you rephrase your question?"
+        )
