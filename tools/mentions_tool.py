@@ -3,20 +3,20 @@ from .supabase_client import supabase
 
 def fetch_mentions_summary() -> str:
     """
-    Fetches and summarizes the latest Almarai brand mentions from Supabase.
+    Fetches latest brand mentions and sentiment from Supabase.
     """
     try:
-        result = supabase.table("almarai_mentions") \
+        result = supabase.table("mentions") \
             .select("*") \
             .order("created_at", desc=True) \
             .limit(5) \
             .execute()
 
         if not result.data:
-            return "📊 لم يتم العثور على أي ذكر للعلامة التجارية في الفترة الأخيرة."
+            return "لم يتم العثور على أي ذكر حديث للعلامة التجارية."
 
         mentions = result.data
-        summary_parts = ["📊 آخر تحليل لذكر علامة المراعي:\n"]
+        summary_parts = ["📊 آخر تحليل لذكر العلامة التجارية:\n"]
 
         for mention in mentions:
             date = datetime.fromisoformat(mention["created_at"]).strftime("%Y-%m-%d")
@@ -36,5 +36,5 @@ def fetch_mentions_summary() -> str:
         return "\n".join(summary_parts)
 
     except Exception as e:
-        print(f"Error fetching Almarai mentions: {e}")
-        return "⚠️ عذراً، حدث خطأ أثناء جلب بيانات ذكر العلامة التجارية."
+        print(f"Error fetching mentions: {e}")
+        return "عذراً، حدث خطأ أثناء جلب بيانات ذكر العلامة التجارية."

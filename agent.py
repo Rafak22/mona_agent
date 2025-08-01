@@ -1,7 +1,7 @@
 from tools.perplexity_tool import fetch_perplexity_insight
-from tools.almarai_mentions_tool import fetch_mentions_summary
-from tools.almarai_seo_tool import fetch_seo_signals_summary
-from tools.almarai_posts_tool import fetch_posts_summary
+from tools.mentions_tool import fetch_mentions_summary
+from tools.posts_tool import fetch_posts_summary
+from tools.seo_tool import fetch_seo_signals_summary
 from schema import UserProfile
 import re
 
@@ -9,47 +9,59 @@ def is_arabic(text: str) -> bool:
     """Quick check: does the string contain Arabic letters?"""
     return bool(re.search(r'[\u0600-\u06FF]', text))
 
-def route_almarai_query(message: str) -> str | None:
+def route_query(message: str) -> str | None:
     """
-    Routes Almarai-related queries to the appropriate Supabase tool based on keywords.
-    Returns None if no matching tool is found.
+    Routes queries to appropriate Supabase tools based on keywords.
+    Returns None if no match is found.
     """
     message = message.lower().strip()
-    
-    # Brand mentions and reputation
-    if any(kw in message for kw in ["براند", "السمعة", "brand mentions", "ذكر", "سمعة", "reputation"]):
+
+    # Brand mentions and sentiment
+    mentions_keywords = [
+        "وش الناس يقولون", "سمعة", "يقولون عن", "ذكر", "انطباع",
+        "brand mentions", "reputation", "sentiment"
+    ]
+    if any(kw in message for kw in mentions_keywords):
         return fetch_mentions_summary()
-    
-    # Social media and content
-    if any(kw in message for kw in ["social", "منشور", "محتوى", "وسائل التواصل", "تفاعل", "engagement"]):
+
+    # Social media posts
+    posts_keywords = [
+        "بوست", "منشور", "تفاعل", "وسائل التواصل", "السوشيال",
+        "post", "social media", "engagement", "content"
+    ]
+    if any(kw in message for kw in posts_keywords):
         return fetch_posts_summary()
-    
-    # SEO and search rankings
-    if any(kw in message for kw in ["seo", "keywords", "تحسين", "ترتيب", "محركات البحث", "كلمات"]):
+
+    # SEO and keywords
+    seo_keywords = [
+        "كلمات مفتاحية", "تتصدر", "محركات البحث", "ترتيب",
+        "seo", "keywords", "ranking", "search"
+    ]
+    if any(kw in message for kw in seo_keywords):
         return fetch_seo_signals_summary()
-    
+
     return None
 
 def run_agent(user_id: str, message: str, profile: UserProfile) -> str:
     """
-    Simple routing logic: try Supabase tools first, then fallback to Perplexity.
+    Simple routing: try Supabase tools first, then fallback to Perplexity.
     """
     # Try Supabase tools first
-    almarai_reply = route_almarai_query(message)
-    if almarai_reply:
-        return almarai_reply
+    tool_response = route_query(message)
+    if tool_response:
+        return tool_response
 
     # Fallback to Perplexity
     try:
         prompt = f"""
-You are MORVO, Almarai's marketing assistant. The user asked: "{message}"
+You are MORVO, analyzing Almarai's marketing data. The user asked: "{message}"
 
-Focus on marketing insights related to:
-- Brand reputation and mentions
+Focus on:
+- Brand mentions and sentiment
 - Social media performance
-- SEO and search visibility
+- SEO and keyword rankings
 
-Keep your response short, clear, and data-focused.
+Keep it short and data-focused.
 """
         return fetch_perplexity_insight.invoke(prompt)
     except Exception as e:

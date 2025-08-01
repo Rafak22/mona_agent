@@ -3,20 +3,20 @@ from .supabase_client import supabase
 
 def fetch_seo_signals_summary() -> str:
     """
-    Fetches and summarizes the latest Almarai SEO performance data from Supabase.
+    Fetches latest SEO performance metrics from Supabase.
     """
     try:
-        result = supabase.table("almarai_seo") \
+        result = supabase.table("seo_signals") \
             .select("*") \
             .order("created_at", desc=True) \
             .limit(5) \
             .execute()
 
         if not result.data:
-            return "📈 لم يتم العثور على أي تحليلات SEO حديثة للمراعي."
+            return "لم يتم العثور على أي تحليلات SEO حديثة."
 
         signals = result.data
-        summary_parts = ["🔍 آخر تحليل لتحسين محركات البحث للمراعي:\n"]
+        summary_parts = ["🔍 آخر تحليل لتحسين محركات البحث:\n"]
 
         for signal in signals:
             date = datetime.fromisoformat(signal["created_at"]).strftime("%Y-%m-%d")
@@ -27,11 +27,11 @@ def fetch_seo_signals_summary() -> str:
                 f"• {date} | الكلمة المفتاحية: {signal['keyword']}\n"
                 f"  - الموقع: {signal['position']} {change_icon}\n"
                 f"  - حجم البحث: {signal['search_volume']} 🔍\n"
-                f"  - الصعوبة: {signal['difficulty']}/100 📊\n"
+                f"  - التكلفة: {signal['cpc']} 💰\n"
             )
 
         return "\n".join(summary_parts)
 
     except Exception as e:
-        print(f"Error fetching Almarai SEO signals: {e}")
-        return "⚠️ عذراً، حدث خطأ أثناء جلب بيانات تحسين محركات البحث."
+        print(f"Error fetching SEO signals: {e}")
+        return "عذراً، حدث خطأ أثناء جلب بيانات تحسين محركات البحث."

@@ -3,20 +3,20 @@ from .supabase_client import supabase
 
 def fetch_posts_summary() -> str:
     """
-    Fetches and summarizes the latest Almarai social media posts from Supabase.
+    Fetches latest social media posts and their performance from Supabase.
     """
     try:
-        result = supabase.table("almarai_posts") \
+        result = supabase.table("posts") \
             .select("*") \
             .order("created_at", desc=True) \
             .limit(5) \
             .execute()
 
         if not result.data:
-            return "📱 لم يتم العثور على أي منشورات حديثة للمراعي."
+            return "لم يتم العثور على أي منشورات حديثة."
 
         posts = result.data
-        summary_parts = ["📲 آخر تحليل لمنشورات المراعي على وسائل التواصل:\n"]
+        summary_parts = ["📱 آخر تحليل للمنشورات على وسائل التواصل:\n"]
 
         platform_icons = {
             "instagram": "📸",
@@ -40,5 +40,5 @@ def fetch_posts_summary() -> str:
         return "\n".join(summary_parts)
 
     except Exception as e:
-        print(f"Error fetching Almarai posts: {e}")
-        return "⚠️ عذراً، حدث خطأ أثناء جلب بيانات المنشورات."
+        print(f"Error fetching posts: {e}")
+        return "عذراً، حدث خطأ أثناء جلب بيانات المنشورات."
