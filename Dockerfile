@@ -4,15 +4,17 @@ FROM python:3.11-slim
 # Set working directory
 WORKDIR /app
 
-# Copy the entire project
-COPY . .
+# Copy only the necessary files first
+COPY pyproject.toml setup.py ./
+COPY tools ./tools
+COPY *.py ./
 
 # Install dependencies
-RUN pip install --no-cache-dir -r requirements.txt
-RUN pip install -e .
+RUN pip install --upgrade pip && \
+    pip install -e .
 
 # Set Python path
-ENV PYTHONPATH=/app/mona-agent
+ENV PYTHONPATH=/app
 
 # Expose port
 EXPOSE 8000

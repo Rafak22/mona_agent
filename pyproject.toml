@@ -17,6 +17,7 @@ dependencies = [
     "supabase"
 ]
 
-[tool.setuptools]
-package-dir = {"" = "mona-agent"}
-packages = ["tools"]
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["tools*"]
+namespaces = false
