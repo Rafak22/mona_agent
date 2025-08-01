@@ -1,51 +1,49 @@
 from tools.perplexity_tool import fetch_perplexity_insight
-from tools.almarai_tool import almarai_tool
+from tools.almarai_mentions_tool import fetch_mentions_summary
+from tools.almarai_seo_tool import fetch_seo_signals_summary
+from tools.almarai_posts_tool import fetch_posts_summary
 from memory_store import get_user_memory
 from schema import UserProfile
 from langchain.agents import initialize_agent, AgentType
-from tools.supabase_client import supabase
 import re
 
 def is_arabic(text: str) -> bool:
+    """Quick check: does the string contain Arabic letters?"""
     return bool(re.search(r'[\u0600-\u06FF]', text))
 
-def respond_with_future_vision(message: str) -> str | None:
+def route_almarai_query(message: str) -> str | None:
     """
-    Dynamically fetches roadmap replies from Supabase based on keywords.
+    Routes Almarai-related queries to the appropriate tool based on keywords.
     """
-    try:
-        response = supabase.table("features_roadmap").select("*").execute()
-        rows = response.data or []
-        lowered_message = message.lower()
-        lang = "ar" if is_arabic(message) else "en"
+    message = message.lower().strip()
 
-        for row in rows:
-            keyword = row.get("keyword", "").lower()
-            if keyword in lowered_message:
-                roadmap_msg = row.get(f"response_{lang}")
-                if not roadmap_msg:
-                    continue
-                return (
-                    f"{roadmap_msg}\n\n"
-                    + (
-                        "💡 مورفو دائماً في تطوّر — لأنه مبني على تقنيات ذكية وقادر على التكيف مع احتياجاتك بسرعة.\n"
-                        "🚀 هذه الميزة ستكون جاهزة قريبًا، وبأسلوبه الذكي والمبسط، راح تكون تجربة التسويق عندك مختلفة تماماً!"
-                        if lang == "ar"
-                        else
-                        "💡 MORVO is constantly evolving — built with intelligent tech and designed to adapt to your marketing needs fast.\n"
-                        "🚀 This feature is coming soon, and with MORVO's conversational flow, your marketing experience will feel truly next-gen!"
-                    )
-                )
-    except Exception as e:
-        print("❌ Error fetching roadmap reply from Supabase:", e)
+    # Keywords for different data types
+    mentions_keywords = [
+        "براند", "السمعة", "ذكر", "brand mentions", "reputation", "brand24"
+    ]
+    posts_keywords = [
+        "منشور", "المنشورات", "السوشيال", "وسائل التواصل", "نشر", "محتوى", 
+        "ayrshare", "post", "social media"
+    ]
+    seo_keywords = [
+        "تحسين محركات", "seo", "تحليل الكلمات", "ترتيب", "تصدر", "البحث", 
+        "موقع", "se ranking", "keyword ranking"
+    ]
+
+    if any(kw in message for kw in mentions_keywords):
+        return fetch_mentions_summary()
+    elif any(kw in message for kw in posts_keywords):
+        return fetch_posts_summary()
+    elif any(kw in message for kw in seo_keywords):
+        return fetch_seo_signals_summary()
     
     return None
 
 def create_mona_agent(user_id: str):
-    tools = [
-        fetch_perplexity_insight,
-        almarai_tool  # Custom Supabase-based tool
-    ]
+    """
+    Creates a LangChain agent with Perplexity tool for general queries.
+    """
+    tools = [fetch_perplexity_insight]
     memory = get_user_memory(user_id)
 
     return initialize_agent(
@@ -57,11 +55,15 @@ def create_mona_agent(user_id: str):
     )
 
 def run_agent(user_id: str, message: str, profile: UserProfile) -> str:
-    # Check for roadmap reply
-    future_reply = respond_with_future_vision(message)
-    if future_reply:
-        return future_reply
+    """
+    Main entry point for handling user queries.
+    First tries to route Almarai-specific queries, then falls back to Perplexity.
+    """
+    # Try Almarai-specific routing first
+    almarai_reply = route_almarai_query(message)
+    if almarai_reply:
+        return almarai_reply
 
-    # Fallback to Almarai tools or Perplexity
+    # Fallback to general Perplexity queries
     agent = create_mona_agent(user_id)
     return agent.run(message)
