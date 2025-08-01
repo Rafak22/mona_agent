@@ -3,12 +3,20 @@ from .supabase_client import supabase
 
 def fetch_mentions_summary() -> str:
     """
-    Fetches latest brand mentions and sentiment from Supabase.
+    Fetches latest brand mentions from the mentions table.
+    Schema:
+    - mention_text: string
+    - sentiment: string (positive, neutral, negative)
+    - sentiment_score: float (-1.0 to 1.0)
+    - platform: string
+    - author: string
+    - engagement: int
+    - published_date: date
     """
     try:
         result = supabase.table("mentions") \
-            .select("*") \
-            .order("created_at", desc=True) \
+            .select("mention_text,sentiment,sentiment_score,platform,author,engagement,published_date") \
+            .order("published_date", desc=True) \
             .limit(5) \
             .execute()
 
@@ -19,17 +27,21 @@ def fetch_mentions_summary() -> str:
         summary_parts = ["📊 آخر تحليل لذكر العلامة التجارية:\n"]
 
         for mention in mentions:
-            date = datetime.fromisoformat(mention["created_at"]).strftime("%Y-%m-%d")
+            date = datetime.fromisoformat(mention["published_date"]).strftime("%Y-%m-%d")
             sentiment = {
                 "positive": "✨ إيجابي",
                 "negative": "⚠️ سلبي",
                 "neutral": "📝 محايد"
             }.get(mention["sentiment"], "📝 محايد")
+            
+            score = mention["sentiment_score"]
+            sentiment_emoji = "🟢" if score > 0.3 else "🔴" if score < -0.3 else "⚪"
 
             summary_parts.append(
-                f"• {date} | {sentiment}\n"
-                f"  - المصدر: {mention['source']}\n"
-                f"  - المحتوى: {mention['content'][:100]}...\n"
+                f"• {date} | {sentiment} {sentiment_emoji}\n"
+                f"  - المنصة: {mention['platform']}\n"
+                f"  - الكاتب: {mention['author']}\n"
+                f"  - المحتوى: {mention['mention_text'][:100]}...\n"
                 f"  - التفاعل: {mention['engagement']} 👥\n"
             )
 

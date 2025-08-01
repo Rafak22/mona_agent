@@ -3,12 +3,18 @@ from .supabase_client import supabase
 
 def fetch_seo_signals_summary() -> str:
     """
-    Fetches latest SEO performance metrics from Supabase.
+    Fetches latest SEO metrics from the seo_signals table.
+    Schema:
+    - keyword: string
+    - position: int
+    - volume: int
+    - cpc: float
+    - competition: float
     """
     try:
         result = supabase.table("seo_signals") \
-            .select("*") \
-            .order("created_at", desc=True) \
+            .select("keyword,position,volume,cpc,competition") \
+            .order("volume", desc=True) \
             .limit(5) \
             .execute()
 
@@ -19,15 +25,18 @@ def fetch_seo_signals_summary() -> str:
         summary_parts = ["🔍 آخر تحليل لتحسين محركات البحث:\n"]
 
         for signal in signals:
-            date = datetime.fromisoformat(signal["created_at"]).strftime("%Y-%m-%d")
-            change = signal["position_change"]
-            change_icon = "⬆️" if change > 0 else "⬇️" if change < 0 else "➡️"
+            competition_level = (
+                "عالية 🔴" if signal["competition"] > 0.66 else
+                "متوسطة 🟡" if signal["competition"] > 0.33 else
+                "منخفضة 🟢"
+            )
             
             summary_parts.append(
-                f"• {date} | الكلمة المفتاحية: {signal['keyword']}\n"
-                f"  - الموقع: {signal['position']} {change_icon}\n"
-                f"  - حجم البحث: {signal['search_volume']} 🔍\n"
-                f"  - التكلفة: {signal['cpc']} 💰\n"
+                f"• الكلمة المفتاحية: {signal['keyword']}\n"
+                f"  - الموقع: {signal['position']} 📊\n"
+                f"  - حجم البحث: {signal['volume']} 🔍\n"
+                f"  - تكلفة النقرة: ${signal['cpc']:.2f} 💰\n"
+                f"  - المنافسة: {competition_level}\n"
             )
 
         return "\n".join(summary_parts)

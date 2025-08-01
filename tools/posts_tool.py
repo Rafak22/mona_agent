@@ -3,12 +3,19 @@ from .supabase_client import supabase
 
 def fetch_posts_summary() -> str:
     """
-    Fetches latest social media posts and their performance from Supabase.
+    Fetches latest social media posts from the posts table.
+    Schema:
+    - content: string
+    - platform: string
+    - hashtags: array/string
+    - reach: int
+    - ctr: float
+    - published_date: date
     """
     try:
         result = supabase.table("posts") \
-            .select("*") \
-            .order("created_at", desc=True) \
+            .select("content,platform,hashtags,reach,ctr,published_date") \
+            .order("published_date", desc=True) \
             .limit(5) \
             .execute()
 
@@ -27,14 +34,17 @@ def fetch_posts_summary() -> str:
         }
 
         for post in posts:
-            date = datetime.fromisoformat(post["created_at"]).strftime("%Y-%m-%d")
-            platforms = [f"{platform_icons.get(p, '🌐')} {p}" for p in post["platforms"]]
+            date = datetime.fromisoformat(post["published_date"]).strftime("%Y-%m-%d")
+            platform = platform_icons.get(post["platform"].lower(), "🌐")
+            hashtags = post["hashtags"] if isinstance(post["hashtags"], list) else \
+                      post["hashtags"].split(",") if post["hashtags"] else []
             
             summary_parts.append(
-                f"• {date} | {', '.join(platforms)}\n"
+                f"• {date} | {platform} {post['platform']}\n"
                 f"  - المحتوى: {post['content'][:100]}...\n"
-                f"  - التفاعل: {post['engagement']} 👥\n"
+                f"  - الوسوم: {' '.join(['#' + tag.strip() for tag in hashtags[:3]])}...\n"
                 f"  - الوصول: {post['reach']} 👀\n"
+                f"  - نسبة النقر: {post['ctr']:.1f}% 🎯\n"
             )
 
         return "\n".join(summary_parts)
