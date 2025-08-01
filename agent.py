@@ -4,7 +4,9 @@ from tools.almarai_seo_tool import fetch_seo_signals_summary
 from tools.almarai_posts_tool import fetch_posts_summary
 from memory_store import get_user_memory
 from schema import UserProfile
-from langchain.agents import initialize_agent, AgentType
+from langchain.agents import AgentExecutor, create_react_agent
+from langchain.tools import Tool
+from langchain.chat_models import ChatOpenAI
 import re
 
 def is_arabic(text: str) -> bool:
@@ -41,18 +43,34 @@ def route_almarai_query(message: str) -> str | None:
 
 def create_mona_agent(user_id: str):
     """
-    Creates a LangChain agent with Perplexity tool for general queries.
+    Creates a LangChain agent using the modern AgentExecutor pattern.
     """
-    tools = [fetch_perplexity_insight]
-    memory = get_user_memory(user_id)
+    # Define tools with descriptions
+    tools = [
+        Tool(
+            name="perplexity_insight",
+            func=fetch_perplexity_insight.invoke,
+            description="Use this tool for general marketing insights and analysis."
+        )
+    ]
 
-    return initialize_agent(
+    # Initialize LLM with low temperature for more focused responses
+    llm = ChatOpenAI(temperature=0)
+
+    # Create the agent with React framework
+    agent = create_react_agent(llm=llm, tools=tools)
+
+    # Wrap in executor with memory
+    memory = get_user_memory(user_id)
+    agent_executor = AgentExecutor(
+        agent=agent,
         tools=tools,
-        llm=None,
-        agent=AgentType.ZERO_SHOT_REACT_DESCRIPTION,
-        verbose=True,
         memory=memory,
+        verbose=True,
+        handle_parsing_errors=True
     )
+
+    return agent_executor
 
 def run_agent(user_id: str, message: str, profile: UserProfile) -> str:
     """
@@ -66,4 +84,8 @@ def run_agent(user_id: str, message: str, profile: UserProfile) -> str:
 
     # Fallback to general Perplexity queries
     agent = create_mona_agent(user_id)
-    return agent.run(message)
+    try:
+        return agent.invoke({"input": message})["output"]
+    except Exception as e:
+        print(f"Error in agent execution: {e}")
+        return "عذراً، حدث خطأ في معالجة طلبك. هل يمكنك إعادة صياغة السؤال بطريقة مختلفة؟"
