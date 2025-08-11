@@ -1,3 +1,7 @@
+// ============================================
+// 2. POST DATA ENTITY
+// ============================================
+// File: src/main/java/com/morvo/backend/models/PostData.java
 package com.morvo.backend.models;
 
 import jakarta.persistence.*;
@@ -8,24 +12,23 @@ import java.util.UUID;
 @Entity
 @Table(name = "almarai_posts_examples")
 public class PostData {
-    
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
+    @GeneratedValue
     private UUID id;
     
     @Column(name = "post_id", nullable = false)
     private String postId;
     
-    @Column(name = "post_content", nullable = false, columnDefinition = "text")
+    @Column(name = "post_content", nullable = false, columnDefinition = "TEXT")
     private String postContent;
     
-    @Column(name = "platform", nullable = false)
+    @Column(nullable = false)
     private String platform;
     
-    @Column(name = "status", nullable = false)
+    @Column(nullable = false)
     private String status = "published";
     
-    @Column(name = "timestamp", nullable = false)
+    @Column(nullable = false)
     private OffsetDateTime timestamp;
     
     @Column(name = "scheduled_time")
@@ -34,19 +37,17 @@ public class PostData {
     @Column(name = "media_urls", columnDefinition = "text[]")
     private String[] mediaUrls;
     
-    @Column(name = "hashtags", columnDefinition = "text[]")
+    @Column(columnDefinition = "text[]")
     private String[] hashtags;
     
-    @Column(name = "mentions", columnDefinition = "text[]")
+    @Column(columnDefinition = "text[]")
     private String[] mentions;
     
     @Column(name = "engagement_metrics", columnDefinition = "jsonb")
     private String engagementMetrics;
     
-    @Column(name = "reach")
     private Integer reach;
     
-    @Column(name = "impressions")
     private Integer impressions;
     
     @Column(name = "click_through_rate", precision = 5, scale = 4)
@@ -55,7 +56,7 @@ public class PostData {
     @Column(name = "api_response", columnDefinition = "jsonb")
     private String apiResponse;
     
-    @Column(name = "error_message", columnDefinition = "text")
+    @Column(name = "error_message", columnDefinition = "TEXT")
     private String errorMessage;
     
     @Column(name = "project_id", nullable = false)
@@ -70,12 +71,12 @@ public class PostData {
     @Column(name = "created_at")
     private OffsetDateTime createdAt;
     
-    @Column(name = "metadata", columnDefinition = "jsonb")
+    @Column(columnDefinition = "jsonb")
     private String metadata;
 
     // Constructors
     public PostData() {}
-    
+
     // Getters and Setters
     public UUID getId() { return id; }
     public void setId(UUID id) { this.id = id; }
@@ -139,4 +140,4 @@ public class PostData {
     
     public String getMetadata() { return metadata; }
     public void setMetadata(String metadata) { this.metadata = metadata; }
-} 
+}

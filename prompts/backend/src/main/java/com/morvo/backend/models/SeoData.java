@@ -1,3 +1,7 @@
+// ============================================
+// 1. SEO DATA ENTITY
+// ============================================
+// File: src/main/java/com/morvo/backend/models/SeoData.java
 package com.morvo.backend.models;
 
 import jakarta.persistence.*;
@@ -8,15 +12,14 @@ import java.util.UUID;
 @Entity
 @Table(name = "almarai_seo_examples")
 public class SeoData {
-    
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
+    @GeneratedValue
     private UUID id;
     
-    @Column(name = "keyword", nullable = false)
+    @Column(nullable = false)
     private String keyword;
     
-    @Column(name = "position", nullable = false)
+    @Column(nullable = false)
     private Integer position;
     
     @Column(name = "previous_position")
@@ -25,25 +28,25 @@ public class SeoData {
     @Column(name = "position_change")
     private Integer positionChange;
     
-    @Column(name = "volume", nullable = false)
+    @Column(nullable = false)
     private Integer volume;
     
-    @Column(name = "cpc", nullable = false, precision = 10, scale = 2)
+    @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal cpc;
     
-    @Column(name = "competition", nullable = false, precision = 3, scale = 2)
+    @Column(nullable = false, precision = 3, scale = 2)
     private BigDecimal competition;
     
-    @Column(name = "url", nullable = false)
+    @Column(nullable = false)
     private String url;
     
     @Column(name = "search_engine", nullable = false)
     private String searchEngine = "google";
     
-    @Column(name = "location", nullable = false)
+    @Column(nullable = false)
     private String location = "Saudi Arabia";
     
-    @Column(name = "device", nullable = false)
+    @Column(nullable = false)
     private String device = "desktop";
     
     @Column(name = "tracked_date")
@@ -60,13 +63,10 @@ public class SeoData {
     
     @Column(name = "created_at")
     private OffsetDateTime createdAt;
-    
-    @Column(name = "metadata", columnDefinition = "jsonb")
-    private String metadata;
 
     // Constructors
     public SeoData() {}
-    
+
     // Getters and Setters
     public UUID getId() { return id; }
     public void setId(UUID id) { this.id = id; }
@@ -118,7 +118,4 @@ public class SeoData {
     
     public OffsetDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(OffsetDateTime createdAt) { this.createdAt = createdAt; }
-    
-    public String getMetadata() { return metadata; }
-    public void setMetadata(String metadata) { this.metadata = metadata; }
-} 
+}

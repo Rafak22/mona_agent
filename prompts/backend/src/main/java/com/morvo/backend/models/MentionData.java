@@ -1,3 +1,7 @@
+// ============================================
+// 3. MENTION DATA ENTITY
+// ============================================
+// File: src/main/java/com/morvo/backend/models/MentionData.java
 package com.morvo.backend.models;
 
 import jakarta.persistence.*;
@@ -8,27 +12,26 @@ import java.util.UUID;
 @Entity
 @Table(name = "almarai_mentions_examples")
 public class MentionData {
-    
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
+    @GeneratedValue
     private UUID id;
     
     @Column(name = "mention_id", nullable = false)
     private String mentionId;
     
-    @Column(name = "mention_text", nullable = false, columnDefinition = "text")
+    @Column(name = "mention_text", nullable = false, columnDefinition = "TEXT")
     private String mentionText;
     
-    @Column(name = "sentiment", nullable = false)
+    @Column(nullable = false)
     private String sentiment;
     
     @Column(name = "sentiment_score", nullable = false, precision = 3, scale = 2)
     private BigDecimal sentimentScore;
     
-    @Column(name = "platform", nullable = false)
+    @Column(nullable = false)
     private String platform;
     
-    @Column(name = "author", nullable = false)
+    @Column(nullable = false)
     private String author;
     
     @Column(name = "author_followers")
@@ -37,7 +40,7 @@ public class MentionData {
     @Column(name = "author_verified")
     private Boolean authorVerified = false;
     
-    @Column(name = "url", nullable = false)
+    @Column(nullable = false, columnDefinition = "TEXT")
     private String url;
     
     @Column(name = "published_date", nullable = false)
@@ -46,16 +49,13 @@ public class MentionData {
     @Column(name = "collected_date")
     private OffsetDateTime collectedDate;
     
-    @Column(name = "reach")
     private Integer reach;
     
-    @Column(name = "engagement")
     private Integer engagement;
     
-    @Column(name = "language", nullable = false)
+    @Column(nullable = false)
     private String language = "ar";
     
-    @Column(name = "country")
     private String country = "SA";
     
     @Column(name = "project_id", nullable = false)
@@ -70,12 +70,12 @@ public class MentionData {
     @Column(name = "created_at")
     private OffsetDateTime createdAt;
     
-    @Column(name = "metadata", columnDefinition = "jsonb")
+    @Column(columnDefinition = "jsonb")
     private String metadata;
 
     // Constructors
     public MentionData() {}
-    
+
     // Getters and Setters
     public UUID getId() { return id; }
     public void setId(UUID id) { this.id = id; }
@@ -139,4 +139,4 @@ public class MentionData {
     
     public String getMetadata() { return metadata; }
     public void setMetadata(String metadata) { this.metadata = metadata; }
-} 
+}
