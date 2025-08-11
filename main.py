@@ -1,138 +1,93 @@
-import logging
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-from schema import UserMessage, UserProfileState, UserProfile
-from memory_store import get_user_profile, update_user_profile, users, user_memory
-from tools.perplexity_tool import fetch_perplexity_insight as fetch_ai_insight
-from tools.conversation_logger import to_uuid, get_or_create_conversation, log_turn_via_rpc
-from onboarding_graph import start_step, next_step
-from agent import run_agent
-from dotenv import load_dotenv
+# main.py
+import os
+from typing import Optional, List
 
-# Load .env and logging
-load_dotenv()
-logging.basicConfig(level=logging.INFO)
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+
+# Chat plumbing lives in agent.py
+from agent import route_query, answer_with_openai, get_profile, build_system_prompt
+
+# ---- Supabase client (v2) ----
+try:
+    from supabase import create_client  # pip install supabase
+except Exception as e:
+    create_client = None
+
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+# Prefer service key on the backend; anon works if your RLS allows it
+SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_KEY") or os.getenv("SUPABASE_ANON_KEY")
+
+_sb = create_client(SUPABASE_URL, SUPABASE_KEY) if (create_client and SUPABASE_URL and SUPABASE_KEY) else None
 
 app = FastAPI()
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE"],
-    allow_headers=["*"],
-)
 
-@app.get("/")
-def read_root():
-    return {"message": "👋 MORVO is ready to analyze Almarai data!"}
-
-class OnboardingEvent(BaseModel):
+# ---------- MODELS ----------
+class ProfileUpsert(BaseModel):
+    # EXACT schema you shared
     user_id: str
-    conversation_id: str | None = None
-    current_step: str | None = None
-    value: str | None = None
-    values: list[str] | None = None
+    user_role: Optional[str] = None
+    industry: Optional[str] = None
+    company_size: Optional[str] = None
+    website_status: Optional[str] = None   # "Yes"/"No"
+    website_url: Optional[str] = None
+    primary_goals: List[str] = []          # default to []
+    budget_range: Optional[str] = None
 
-@app.post("/onboarding/start")
-def onboarding_start(event: OnboardingEvent):
-    # Returns first step JSON and ensures conversation
-    resp = start_step(event.user_id)
-    return resp
 
-@app.post("/onboarding/next")
-def onboarding_next(event: OnboardingEvent):
-    if not event.user_id:
-        return {"ui_type": "input", "message": "أدخل معرف المستخدم", "fields": [{"id": "user_id", "label": "User ID"}], "state_updates": {}}
-    # require conversation
-    if not event.conversation_id:
-        init = start_step(event.user_id)
-        return init
-    payload = {"value": event.value, "values": event.values or []}
-    resp = next_step(event.user_id, event.conversation_id, event.current_step or "", payload)
-    return resp
+class ChatReq(BaseModel):
+    user_id: str
+    message: str
+
+
+# ---------- ENDPOINTS ----------
+@app.post("/profile/upsert")
+def upsert_profile(p: ProfileUpsert):
+    """
+    Upserts the user's onboarding/journey info into the 'profiles' table.
+    Columns: user_id, user_role, industry, company_size, website_status,
+             website_url, primary_goals, budget_range
+    """
+    if not _sb:
+        raise HTTPException(status_code=500, detail="Supabase client not configured")
+
+    payload = p.model_dump(exclude_none=True)  # don't send None columns
+    try:
+        res = _sb.table("profiles").upsert(payload, on_conflict="user_id").execute()
+        data = getattr(res, "data", None) or []
+        return {"ok": True, "profile": (data[0] if data else payload)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Supabase upsert failed: {e}")
+
+
+@app.get("/profile/{user_id}")
+def get_profile_api(user_id: str):
+    """Optional helper to fetch the stored profile for debugging."""
+    prof = get_profile(user_id)
+    return {"ok": True, "profile": prof}
+
 
 @app.post("/chat")
-def chat_with_mona(user_input: UserMessage):
-    if not user_input.user_id:
-        return {
-            "reply": "مرحباً! أنا مورفو، وكيلتك التسويقية الذكية. جاهزة لتحليل بيانات المراعي — من وين تحب نبدأ اليوم؟"
-        }
+def chat(req: ChatReq):
+    """
+    Chat endpoint:
+      1) Try Java keyword routes (mentions/posts/seo) via agent.route_query
+      2) Otherwise, load profile → build system prompt → GPT-4 answer
+    """
+    # 1) Java “tables” (no changes to your colleague’s service)
+    routed = route_query(req.message)
+    if routed:
+        return {"reply": routed}
 
-    profile = get_user_profile(user_input.user_id)
-    message = user_input.message.strip()
+    # 2) Personalized GPT-4 reply using saved profile context
+    prof = get_profile(req.user_id)
+    system_text = build_system_prompt(prof)
+    reply = answer_with_openai(req.message, system_text=system_text)
+    return {"reply": reply}
 
-    # Ensure conversation exists
-    user_uuid = to_uuid(user_input.user_id)
-    conversation_id = get_or_create_conversation(user_uuid)
 
-    if message == "start over":
-        profile.state = UserProfileState.CONFIRM_RESET
-        update_user_profile(user_input.user_id, profile)
-        # log user turn
-        if conversation_id:
-            log_turn_via_rpc(user_uuid, conversation_id, profile, {}, "confirm_reset", "user", message)
-        return {"reply": "⚠️ هل أنت متأكد أنك تريد البدء من جديد؟ اكتب: نعم"}
-
-    if profile.state == UserProfileState.CONFIRM_RESET:
-        if message == "نعم":
-            users[user_input.user_id] = UserProfile()
-            if user_input.user_id in user_memory:
-                del user_memory[user_input.user_id]
-            # log
-            if conversation_id:
-                log_turn_via_rpc(user_uuid, conversation_id, profile, {}, "reset", "user", message)
-                log_turn_via_rpc(user_uuid, conversation_id, profile, {}, "reset", "assistant", "🔄 تم إعادة تعيين المحادثة. أهلاً من جديد! ما اسمك؟")
-            return {"reply": "🔄 تم إعادة تعيين المحادثة. أهلاً من جديد! ما اسمك؟"}
-        else:
-            profile.state = UserProfileState.COMPLETE
-            update_user_profile(user_input.user_id, profile)
-            if conversation_id:
-                log_turn_via_rpc(user_uuid, conversation_id, profile, {}, "cancel_reset", "user", message)
-                log_turn_via_rpc(user_uuid, conversation_id, profile, {}, "cancel_reset", "assistant", "❌ تم إلغاء إعادة التهيئة. نكمل من وين وقفنا 😊")
-            return {"reply": "❌ تم إلغاء إعادة التهيئة. نكمل من وين وقفنا 😊"}
-
-    if profile.state == UserProfileState.COMPLETE and message.lower() in ["", "hi", "hello", "ابدأ", "start", "مورفو"]:
-        reply = (
-            "أهلاً! أنا **MORVO** — وكيلتك التسويقية الذكية المتخصصة في تحليل بيانات المراعي.\n\n"
-            "🔍 أقدر أساعدك في:\n"
-            "• تحليل ذكر العلامة التجارية وسمعتها\n"
-            "• متابعة أداء المنشورات على وسائل التواصل\n"
-            "• تحليل أداء SEO والكلمات المفتاحية\n\n"
-            "💡 من وين تحب نبدأ اليوم؟"
-        )
-        if conversation_id:
-            log_turn_via_rpc(user_uuid, conversation_id, profile, {}, "greeting", "user", message)
-            log_turn_via_rpc(user_uuid, conversation_id, profile, {}, "greeting", "assistant", reply)
-        return {"reply": reply}
-
-    # Route through simplified agent
-    response = run_agent(user_input.user_id, message, profile)
-
-    # Log both user and assistant turns with minimal state patch
-    if conversation_id:
-        log_turn_via_rpc(user_uuid, conversation_id, profile, {}, "chat", "user", message)
-        log_turn_via_rpc(user_uuid, conversation_id, profile, {}, "chat", "assistant", response)
-
-    return {"reply": response}
-
-# 360° feature (unchanged)
-class CompanyRequest(BaseModel):
-    company_name: str
-    user_id: str
-
-@app.post("/360prep")
-def generate_360_report(req: CompanyRequest):
-    intro = "📊 360° Snapshot of Almarai by MORVO:\n\n"
-    prompt = f"""Give a short marketing snapshot for Almarai.
-
-Include:
-- Brand Mentions & Reputation
-- Social Media Performance
-- SEO & Keywords Analysis
-
-Keep it short, 40–100 words, bullet format, good for fast scan.
-"""
-    response = fetch_ai_insight.invoke(intro + prompt)
-    return {"reply": response}
+# ---- Optional: previously used Perplexity route should be removed/disabled ----
+# @app.post("/360prep")
+# def deprecated_360():
+#     return {"error": "Perplexity integration removed. Use /chat instead."}
