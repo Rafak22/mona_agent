@@ -5,3 +5,4 @@ requests
 langchain
 pydantic
 supabase
+langgraph>=0.2.26

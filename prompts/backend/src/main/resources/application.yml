@@ -1,0 +1,26 @@
+spring:
+  application:
+    name: morvo-backend
+  
+  datasource:
+    url: ${SUPABASE_DB_URL:jdbc:postgresql://ctcnutpnikiwvqbekdnp.supabase.co:5432/postgres}
+    username: ${SUPABASE_DB_USERNAME:postgres}
+    password: ${SUPABASE_DB_PASSWORD:}
+    driver-class-name: org.postgresql.Driver
+  
+  jpa:
+    hibernate:
+      ddl-auto: none
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+
+server:
+  port: ${PORT:8080}
+
+logging:
+  level:
+    com.morvo: DEBUG
+    org.springframework.web: INFO 
