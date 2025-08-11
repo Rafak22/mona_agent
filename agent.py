@@ -14,7 +14,7 @@ def route_query(message: str) -> str | None:
     Returns None if no match is found.
     """
     message = message.lower().strip()
-
+    
     # Brand mentions and sentiment
     mentions_keywords = [
         "وش الناس يقولون", "سمعة", "يقولون عن", "ذكر", "انطباع",
@@ -22,7 +22,7 @@ def route_query(message: str) -> str | None:
     ]
     if any(kw in message for kw in mentions_keywords):
         return fetch_mentions_summary()
-
+    
     # Social media posts
     posts_keywords = [
         "بوست", "منشور", "تفاعل", "وسائل التواصل", "السوشيال",
@@ -30,7 +30,7 @@ def route_query(message: str) -> str | None:
     ]
     if any(kw in message for kw in posts_keywords):
         return fetch_posts_summary()
-
+    
     # SEO and keywords
     seo_keywords = [
         "كلمات مفتاحية", "تتصدر", "محركات البحث", "ترتيب",
@@ -38,27 +38,44 @@ def route_query(message: str) -> str | None:
     ]
     if any(kw in message for kw in seo_keywords):
         return fetch_seo_signals_summary()
-
+    
     return None
 
 def run_agent(user_id: str, message: str, profile: UserProfile) -> str:
     """
-    Simple routing: try Supabase tools first, Perplexity temporarily disabled.
+    Simple routing: try Supabase tools first, then OpenAI fallback.
     """
     # Try Supabase tools first
     tool_response = route_query(message)
     if tool_response:
         return tool_response
-
-    # Perplexity temporarily disabled
-    return (
-        "⚠️ عذراً، لا يمكنني الإجابة على هذا السؤال حالياً. الرجاء السؤال عن:\n"
-        "• ذكر العلامة التجارية والسمعة\n"
-        "• المنشورات ووسائل التواصل\n"
-        "• تحليلات SEO والكلمات المفتاحية"
-        if is_arabic(message) else
-        "⚠️ Sorry, I can only answer questions about:\n"
-        "• Brand mentions and reputation\n"
-        "• Social media posts and engagement\n"
-        "• SEO and keyword analytics"
-    )
+    
+    # OpenAI fallback for general questions
+    try:
+        # Import OpenAI here
+        import openai
+        import os
+        
+        client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+        
+        response = client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "أنت مورفو، وكيلة تسويق ذكية متخصصة في تحليل بيانات المراعي. أجب باللغة العربية بطريقة ودودة ومفيدة."},
+                {"role": "user", "content": message}
+            ],
+            max_tokens=150
+        )
+        
+        return response.choices[0].message.content
+        
+    except Exception as e:
+        print(f"OpenAI error: {e}")
+        # Fallback response
+        return (
+            f"مرحباً! شكراً لسؤالك '{message}'. أنا مورفو، وكيلتك التسويقية الذكية. "
+            "يمكنني مساعدتك في تحليل البيانات التسويقية للمراعي!"
+            if is_arabic(message) else
+            f"Hello! Thanks for your question '{message}'. I'm MORVO, your smart marketing agent. "
+            "I can help you analyze Almarai's marketing data!"
+        )
