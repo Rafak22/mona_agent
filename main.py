@@ -6,7 +6,7 @@ from schema import UserMessage, UserProfileState, UserProfile
 from memory_store import get_user_profile, update_user_profile, users, user_memory
 from tools.perplexity_tool import fetch_perplexity_insight as fetch_ai_insight
 from tools.conversation_logger import to_uuid, get_or_create_conversation, log_turn_via_rpc
-from prompts.onboarding_graph import start_step, next_step
+from onboarding_graph import start_step, next_step
 from agent import run_agent
 from dotenv import load_dotenv
 
