@@ -1,7 +1,8 @@
-# agent.py
-import os, requests
+ # agent.py
+import os, requests, json
 from typing import Optional, Dict, Any, List
 from openai import OpenAI
+from tools.supabase_client import supabase as _sb
 
 # ---- OpenAI (GPT-4 family) ----
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
@@ -26,55 +27,82 @@ def answer_with_openai(user_text: str, *, system_text: str, history: List[Dict[s
     )
     return resp.choices[0].message.content.strip()
 
-# ---- Java routes (keywords) ----
-JAVA_API_BASE = os.getenv("JAVA_API_BASE", "https://sweet-stillness-production.up.railway.app/api")
-
+# ---- Routing keywords (Arabic + English synonyms) ----
 ROUTE_KEYWORDS = {
-    "mentions": ["mentions", "سمعة", "آراء", "وش يقولون", "الناس تقول", "براند"],
-    "posts":    ["posts", "بوستات", "منشورات", "سوشيال"],
-    "seo":      ["seo", "سيو", "ترتيب", "بحث", "كلمات", "باكلينك"],
+    "mentions": [
+        "mentions", "mention", "سمعة", "السمعة", "ذكر", "الذكر", "آراء", "تعليقات",
+        "مراجعات", "وش يقولون", "الناس تقول", "حديث الناس", "البراند", "براند", "سمعة العلامة",
+        "مشاعر", "sentiment"
+    ],
+    "posts": [
+        "posts", "post", "بوست", "بوستات", "منشور", "منشورات", "سوشيال", "سوشيال ميديا",
+        "تغريدات", "تويتر", "اكس", "انستقرام", "تيك توك", "يوتيوب", "reach", "engagement"
+    ],
+    "seo": [
+        "seo", "سيو", "تحسين محركات", "تحسين محركات البحث", "بحث", "نتائج البحث", "ترتيب",
+        "الترتيب", "كلمات", "كلمات مفتاحية", "باكلينك", "باك لينك", "جوجل", "google"
+    ],
 }
 
-def _java_get(path: str) -> Optional[str]:
-    """
-    Only return a NON-empty string on success.
-    Return None on:
-      - HTTP error
-      - empty body
-      - 'null', '[]', '{}' (common placeholders)
-    """
+# ---- Supabase routing helpers ----
+def _format_rows_for_text(table: str, rows: List[Dict[str, Any]]) -> str:
+    if not rows:
+        return "لا توجد بيانات متاحة حالياً."
+    lines: List[str] = []
+    for row in rows:
+        # Prefer common fields if present
+        parts: List[str] = []
+        for key in ("title", "keyword", "content", "text", "summary", "source", "platform", "sentiment"):
+            if key in row and row[key]:
+                val = str(row[key])
+                if len(val) > 140:
+                    val = val[:137] + "..."
+                parts.append(f"{key}: {val}")
+        # Fallback to first 3 items
+        if not parts:
+            for k, v in list(row.items())[:3]:
+                parts.append(f"{k}: {v}")
+        lines.append("• " + " | ".join(parts))
+        if len(lines) >= 5:
+            break
+    return f"أهم بيانات {table} (آخر 5):\n" + "\n".join(lines)
+
+def _sb_fetch_table(table: str) -> Optional[str]:
+    if not _sb:
+        return None
     try:
-        r = requests.get(f"{JAVA_API_BASE}{path}", timeout=20)
-        r.raise_for_status()
-        body = (r.text or "").strip()
-        if not body:
+        q = _sb.table(table).select("*")
+        # try to order by created_at if present
+        try:
+            q = q.order("created_at", desc=True)
+        except Exception:
+            pass
+        res = q.limit(5).execute()
+        rows = res.data or []
+        if not rows:
             return None
-        if body in ("null", "[]", "{}", "\"\""):
-            return None
-        return body
+        return _format_rows_for_text(table, rows)
     except Exception as e:
-        print(f"[route_query] Java call failed {path}: {e}")
+        print(f"[supabase] fetch failed for {table}: {e}")
         return None
 
 def route_query(message: str) -> Optional[str]:
     """
-    Return:
-      - string (the Java response) ONLY when a keyword matched AND the call succeeded with content
-      - None otherwise → caller should fall back to OpenAI
+    Route to Supabase-backed data answers for mentions/posts/seo when keywords match.
+    Returns a non-empty string on success; otherwise None so caller can fall back to OpenAI.
     """
     txt = (message or "").lower()
-    path = None
+    table: Optional[str] = None
     if any(k in txt for k in ROUTE_KEYWORDS["mentions"]):
-        path = "/mentions"
+        table = "mentions"
     elif any(k in txt for k in ROUTE_KEYWORDS["posts"]):
-        path = "/posts"
+        table = "posts"
     elif any(k in txt for k in ROUTE_KEYWORDS["seo"]):
-        path = "/seo"
+        table = "seo"
 
-    if not path:
+    if not table:
         return None
-
-    return _java_get(path)
+    return _sb_fetch_table(table)
 
 def run_agent(user_id: str, message: str, profile, history: List[Dict[str, str]] = None) -> str:
     """
