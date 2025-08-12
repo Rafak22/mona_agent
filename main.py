@@ -190,7 +190,7 @@ def chat_with_mona(user_input: UserMessage, request: Request):
                 log_turn_via_rpc(user_uuid, conversation_id, profile, {}, "cancel_reset", "assistant", reply)
             return {"reply": reply}
 
-    # If user greets or profile isn't complete, route into onboarding within /chat
+    # If user greets, profile isn't complete, or there is no profile row in Supabase, route into onboarding within /chat
     greeting_triggers = [
         "",
         "hi",
@@ -202,7 +202,21 @@ def chat_with_mona(user_input: UserMessage, request: Request):
         "أهلا",
         "مرحبا",
     ]
-    if profile.state != UserProfileState.COMPLETE or message.lower() in greeting_triggers:
+    # Check if a profile row exists in Supabase for this user (persistent, not just in-memory)
+    profile_exists = False
+    if _sb:
+        try:
+            uid = str(user_uuid)
+            res = _sb.table("profiles").select("user_id").eq("user_id", uid).limit(1).execute()
+            profile_exists = bool(res.data)
+        except Exception as e:
+            logging.info(f"[chat] profile_exists check skipped: {e}")
+
+    if (profile.state != UserProfileState.COMPLETE) or (not profile_exists) or (message.lower() in greeting_triggers):
+        WELCOME_TEXT = (
+            "حياك الله! أنا MORVO، مستشارتك الذكية للتسويق. أقدر أساعدك في تحليل السمعة والمنشورات وSEO."
+            " خلّينا نبدأ بالتعارف… وش اسمك الأول؟"
+        )
         # If onboarding not started in this session, start; otherwise resume with provided message
         if profile.state == UserProfileState.COMPLETE:
             # Start flow
@@ -211,7 +225,7 @@ def chat_with_mona(user_input: UserMessage, request: Request):
             profile.state = UserProfileState.ASK_NAME
             update_user_profile(user_input.user_id, profile)
             ui = ob.get("ui") or {}
-            reply = ui.get("message") or ""
+            reply = ui.get("message") or WELCOME_TEXT
         else:
             # Resume flow with the user's message
             step = resume_onboarding(user_input.user_id, message)
@@ -221,7 +235,7 @@ def chat_with_mona(user_input: UserMessage, request: Request):
                 reply = "تم حفظ بياناتك. كيف أقدر أساعدك اليوم؟"
             else:
                 ui = step.get("ui") or {}
-                reply = ui.get("message") or ""
+                reply = ui.get("message") or WELCOME_TEXT
 
         # Save messages
         save_message_to_db(user_input.user_id, "user", message)
