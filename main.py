@@ -40,6 +40,12 @@ class ChatReq(BaseModel):
     user_id: str
     message: str
 
+# (optional) simple system prompt; you can enrich it from Supabase profile if you already wired that
+def _system_prompt() -> str:
+    return (
+        "أنت MORVO، مستشارة تسويق ثنائية اللغة (عربي/إنجليزي). "
+        "قدّمي إجابات عملية ومختصرة وركزي على العائد."
+    )
 
 # ---------- ENDPOINTS ----------
 @app.post("/profile/upsert")
@@ -70,21 +76,18 @@ def get_profile_api(user_id: str):
 
 @app.post("/chat")
 def chat(req: ChatReq):
-    """
-    Chat endpoint:
-      1) Try Java keyword routes (mentions/posts/seo) via agent.route_query
-      2) Otherwise, load profile → build system prompt → GPT-4 answer
-    """
-    # 1) Java “tables” (no changes to your colleague’s service)
+    # 1) Try Java routes – only if we got a REAL non-empty answer
     routed = route_query(req.message)
-    if routed:
+    if isinstance(routed, str) and routed.strip():
         return {"reply": routed}
 
-    # 2) Personalized GPT-4 reply using saved profile context
-    prof = get_profile(req.user_id)
-    system_text = build_system_prompt(prof)
-    reply = answer_with_openai(req.message, system_text=system_text)
-    return {"reply": reply}
+    # 2) Fall back to OpenAI
+    try:
+        reply = answer_with_openai(req.message, system_text=_system_prompt())
+        return {"reply": reply}
+    except Exception as e:
+        # Return JSON error instead of letting the browser show "Failed to fetch"
+        raise HTTPException(status_code=502, detail=f"LLM provider error: {e}")
 
 
 # ---- Optional: previously used Perplexity route should be removed/disabled ----
