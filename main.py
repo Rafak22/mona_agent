@@ -6,7 +6,7 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
 # Chat plumbing lives in agent.py
-from agent import route_query, answer_with_openai, get_profile, build_system_prompt
+from agent import route_query, answer_with_openai
 
 # ---- Supabase client (v2) ----
 try:
@@ -70,8 +70,16 @@ def upsert_profile(p: ProfileUpsert):
 @app.get("/profile/{user_id}")
 def get_profile_api(user_id: str):
     """Optional helper to fetch the stored profile for debugging."""
-    prof = get_profile(user_id)
-    return {"ok": True, "profile": prof}
+    if not _sb:
+        return {"ok": True, "profile": None}
+    
+    try:
+        res = _sb.table("profiles").select("*").eq("user_id", user_id).limit(1).execute()
+        data = getattr(res, "data", None) or []
+        profile = data[0] if data else None
+        return {"ok": True, "profile": profile}
+    except Exception as e:
+        return {"ok": False, "error": str(e)}
 
 
 @app.post("/chat")
