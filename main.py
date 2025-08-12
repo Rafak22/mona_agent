@@ -1,16 +1,17 @@
 import logging
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from schema import UserMessage, UserProfileState, UserProfile
 from memory_store import get_user_profile, update_user_profile, users, user_memory
-from tools.perplexity_tool import fetch_perplexity_insight as fetch_ai_insight
 from tools.conversation_logger import to_uuid, get_or_create_conversation, log_turn_via_rpc
 from onboarding_graph import start_onboarding, resume_onboarding
 from agent import run_agent, answer_with_openai
 from tools.supabase_client import supabase
 from dotenv import load_dotenv
 from typing import List, Dict, Optional
+import asyncio
+import openai  # for catching SDK-specific exceptions across versions
 import os
 
 # Load .env and logging
@@ -64,18 +65,23 @@ def save_message_to_db(user_id: str, role: str, content: str) -> bool:
 
 app = FastAPI()
 
+# Expanded CORS to support Lovable subdomains and local development
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "https://58f42318-2170-4cd0-8a86-1dcb3c26f3ea.lovableproject.com",
         "http://localhost:5173",
         "http://localhost:3000",
-        "http://localhost:8080"
+        "http://localhost:8080",
     ],
+    allow_origin_regex=r"^https://([a-zA-Z0-9-]+\.)*(lovable\.app|lovable\.dev|railway\.app)$",
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.options("/{path:path}")
+def cors_preflight(path: str) -> Response:
+    return Response(status_code=204)
 
 @app.get("/")
 def read_root():
@@ -87,6 +93,11 @@ class OBStartReq(BaseModel):
 class OBStepReq(BaseModel):
     user_id: str
     value: str
+
+class OpenAIChatRequest(BaseModel):
+    prompt: str
+    system: Optional[str] = None
+    history: Optional[List[Dict[str, str]]] = None
 
 @app.post("/onboarding/start")
 def onboarding_start(event: OBStartReq):
@@ -122,7 +133,7 @@ def onboarding_step(event: OBStepReq):
     return payload
 
 @app.post("/chat")
-def chat_with_mona(user_input: UserMessage):
+def chat_with_mona(user_input: UserMessage, request: Request):
     if not user_input.user_id:
         return {
             "reply": "مرحباً! أنا مورفو، وكيلتك التسويقية الذكية. جاهزة لتحليل بيانات المراعي — من وين تحب نبدأ اليوم؟"
@@ -197,7 +208,26 @@ def chat_with_mona(user_input: UserMessage):
     history = get_conversation_history(user_input.user_id)
     
     # Route through simplified agent with conversation history
-    response = run_agent(user_input.user_id, message, profile, history)
+    origin = request.headers.get("origin") or ""
+    logging.info(f"[chat] received origin={origin} user_id={user_input.user_id} msg={message[:80]}...")
+
+    try:
+        response = run_agent(user_input.user_id, message, profile, history)
+    except Exception as e:  # Map specific OpenAI-related errors to clearer HTTP codes/messages
+        # Normalize OpenAI exception classes across SDK versions
+        oai_error_mod = getattr(openai, "error", None)
+        AuthErr = getattr(openai, "AuthenticationError", None) or (getattr(oai_error_mod, "AuthenticationError", None) if oai_error_mod else None)
+        RateErr = getattr(openai, "RateLimitError", None) or (getattr(oai_error_mod, "RateLimitError", None) if oai_error_mod else None)
+        TimeoutErr = getattr(openai, "APITimeoutError", None)
+
+        if isinstance(e, (TimeoutError, asyncio.TimeoutError)) or (TimeoutErr and isinstance(e, TimeoutErr)):
+            raise HTTPException(status_code=504, detail="OpenAI request timed out.")
+        if (AuthErr and isinstance(e, AuthErr)):
+            raise HTTPException(status_code=401, detail="Invalid OpenAI API key.")
+        if (RateErr and isinstance(e, RateErr)):
+            raise HTTPException(status_code=429, detail="OpenAI API rate limit exceeded.")
+        # Any other unexpected exception → return 502 including the exception message for debugging
+        raise HTTPException(status_code=502, detail=f"OpenAI error: {e}")
 
     # Save messages to Supabase messages table
     save_message_to_db(user_input.user_id, "user", message)
@@ -208,24 +238,60 @@ def chat_with_mona(user_input: UserMessage):
         log_turn_via_rpc(user_uuid, conversation_id, profile, {}, "chat", "user", message)
         log_turn_via_rpc(user_uuid, conversation_id, profile, {}, "chat", "assistant", response)
 
+    logging.info(f"[chat] origin={origin} user_id={user_input.user_id} msg={message[:60]} reply={(response or '')[:60]}...")
     return {"reply": response}
 
-# 360° feature (unchanged)
-class CompanyRequest(BaseModel):
-    company_name: str
-    user_id: str
+@app.post("/onboarding/start_compat")
+def onboarding_start_compat(event: OBStartReq):
+    res = onboarding_start(event)
+    ui = res.get("ui") or {}
+    msg = ui.get("message") or ""
+    return {"reply": msg}
 
-@app.post("/360prep")
-def generate_360_report(req: CompanyRequest):
-    intro = "📊 360° Snapshot of Almarai by MORVO:\n\n"
-    prompt = f"""Give a short marketing snapshot for Almarai.
+@app.post("/onboarding/step_compat")
+def onboarding_step_compat(event: OBStepReq):
+    res = onboarding_step(event)
+    ui = res.get("ui")
+    if not ui:
+        return {"reply": "Done!"}
+    return {"reply": ui.get("message") or ""}
 
-Include:
-- Brand Mentions & Reputation
-- Social Media Performance
-- SEO & Keywords Analysis
+@app.get("/diag")
+def diag():
+    # Try a lightweight OpenAI call without Lovable to isolate issues
+    chat_test: str
+    try:
+        chat_test = answer_with_openai("ping", system_text="diag", history=[])
+    except Exception as e:
+        chat_test = f"error: {e}"
+    return {
+        "has_supabase": bool(_sb),
+        "endpoints": [
+            "onboarding/start",
+            "onboarding/step",
+            "onboarding/start_compat",
+            "onboarding/step_compat",
+            "chat",
+        ],
+        "chat_test": chat_test,
+    }
 
-Keep it short, 40–100 words, bullet format, good for fast scan.
-"""
-    response = fetch_ai_insight.invoke(intro + prompt)
-    return {"reply": response}
+@app.post("/openai/chat")
+def openai_chat(req: OpenAIChatRequest):
+    try:
+        system_text = req.system or "You are MORVO, a helpful marketing assistant."
+        resp = answer_with_openai(req.prompt, system_text=system_text, history=req.history)
+        return {"reply": resp}
+    except Exception as e:
+        oai_error_mod = getattr(openai, "error", None)
+        AuthErr = getattr(openai, "AuthenticationError", None) or (getattr(oai_error_mod, "AuthenticationError", None) if oai_error_mod else None)
+        RateErr = getattr(openai, "RateLimitError", None) or (getattr(oai_error_mod, "RateLimitError", None) if oai_error_mod else None)
+        TimeoutErr = getattr(openai, "APITimeoutError", None)
+
+        if isinstance(e, (TimeoutError, asyncio.TimeoutError)) or (TimeoutErr and isinstance(e, TimeoutErr)):
+            raise HTTPException(status_code=504, detail="OpenAI request timed out.")
+        if (AuthErr and isinstance(e, AuthErr)):
+            raise HTTPException(status_code=401, detail="Invalid OpenAI API key.")
+        if (RateErr and isinstance(e, RateErr)):
+            raise HTTPException(status_code=429, detail="OpenAI API rate limit exceeded.")
+        raise HTTPException(status_code=502, detail=f"OpenAI error: {e}")

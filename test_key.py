@@ -3,10 +3,10 @@ import os
 from dotenv import load_dotenv
 
 load_dotenv()
-key = os.getenv("PERPLEXITY_API_KEY")
-print("🔑 Testing Key:", key)
+key = os.getenv("OPENAI_API_KEY")
+print("🔑 Testing OpenAI Key:", "set" if bool(key) else "missing")
 
-url = "https://api.perplexity.ai/chat/completions"
+url = "https://api.openai.com/v1/chat/completions"
 
 headers = {
     "Authorization": f"Bearer {key}",
@@ -14,7 +14,7 @@ headers = {
 }
 
 payload = {
-    "model": "sonar-pro",  # ✅ Valid model
+    "model": "gpt-4o-mini",
     "messages": [
         {"role": "user", "content": "What are effective marketing strategies for Ramadan campaigns?"}
     ],
@@ -26,6 +26,6 @@ res = requests.post(url, headers=headers, json=payload)
 print("✅ Status Code:", res.status_code)
 try:
     print("🧠 Mona says:\n", res.json()["choices"][0]["message"]["content"])
-except Exception as e:
+except Exception:
     print("❌ Error parsing response:")
-    print(res.text) 
+    print(res.text)
