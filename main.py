@@ -73,14 +73,18 @@ app.add_middleware(
         "http://localhost:3000",
         "http://localhost:8080",
     ],
-    allow_origin_regex=r"^https://([a-zA-Z0-9-]+\.)*(lovable\.app|lovable\.dev|railway\.app)$",
+    allow_origin_regex=r"^https://([a-zA-Z0-9-]+\.)*(lovable\.app|lovable\.dev|lovableproject\.com|railway\.app)$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 @app.options("/{path:path}")
-def cors_preflight(path: str) -> Response:
+def cors_preflight(path: str, request: Request) -> Response:
+    origin = request.headers.get("origin") or ""
+    acrm = request.headers.get("access-control-request-method") or ""
+    acrh = request.headers.get("access-control-request-headers") or ""
+    logging.info(f"[preflight] path=/{path} origin={origin} method={acrm} headers={acrh}")
     return Response(status_code=204)
 
 @app.get("/")
