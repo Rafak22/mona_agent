@@ -6,7 +6,7 @@ from schema import UserMessage, UserProfileState, UserProfile
 from memory_store import get_user_profile, update_user_profile, users, user_memory
 from tools.perplexity_tool import fetch_perplexity_insight as fetch_ai_insight
 from tools.conversation_logger import to_uuid, get_or_create_conversation, log_turn_via_rpc
-from onboarding_graph import start_step, next_step
+from onboarding_graph import start_onboarding, resume_onboarding
 from agent import run_agent
 from dotenv import load_dotenv
 
@@ -36,27 +36,43 @@ def read_root():
 class OnboardingEvent(BaseModel):
     user_id: str
     conversation_id: str | None = None
-    current_step: str | None = None
+    current_step: str | None = None  # kept for FE compatibility (unused by graph)
     value: str | None = None
     values: list[str] | None = None
 
 @app.post("/onboarding/start")
 def onboarding_start(event: OnboardingEvent):
-    # Returns first step JSON and ensures conversation
-    resp = start_step(event.user_id)
-    return resp
+    result = start_onboarding(event.user_id)
+    ui = result.get("ui", {}) or {}
+    # normalize shape expected by FE
+    payload = {
+        "conversation_id": result.get("conversation_id"),
+        "done": result.get("done", False),
+        "ui_type": ui.get("ui_type"),
+        "message": ui.get("message"),
+        "options": ui.get("options", []),
+        "fields": ui.get("fields", []),
+        "state_updates": ui.get("state_updates", {}),
+    }
+    return payload
 
 @app.post("/onboarding/next")
 def onboarding_next(event: OnboardingEvent):
     if not event.user_id:
         return {"ui_type": "input", "message": "أدخل معرف المستخدم", "fields": [{"id": "user_id", "label": "User ID"}], "state_updates": {}}
-    # require conversation
-    if not event.conversation_id:
-        init = start_step(event.user_id)
-        return init
-    payload = {"value": event.value, "values": event.values or []}
-    resp = next_step(event.user_id, event.conversation_id, event.current_step or "", payload)
-    return resp
+    value = event.values if event.values else event.value
+    result = resume_onboarding(event.user_id, value)
+    ui = result.get("ui", {}) or {}
+    payload = {
+        "conversation_id": result.get("conversation_id"),
+        "done": result.get("done", False),
+        "ui_type": ui.get("ui_type"),
+        "message": ui.get("message"),
+        "options": ui.get("options", []),
+        "fields": ui.get("fields", []),
+        "state_updates": ui.get("state_updates", {}),
+    }
+    return payload
 
 @app.post("/chat")
 def chat_with_mona(user_input: UserMessage):
