@@ -1,6 +1,6 @@
 import uuid
 from typing import Optional, Dict, Any
-from .supabase_client import supabase
+from tools.supabase_client import supabase
 from schema import UserProfile
 
 # Generate a stable UUIDv5 from any string user_id so it fits UUID columns

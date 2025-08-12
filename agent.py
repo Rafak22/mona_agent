@@ -8,13 +8,19 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o")  # or "gpt-4.1"
 _oai = OpenAI(api_key=OPENAI_API_KEY)
 
-def answer_with_openai(user_text: str, *, system_text: str) -> str:
+def answer_with_openai(user_text: str, *, system_text: str, history: List[Dict[str, str]] = None) -> str:
+    messages = [{"role": "system", "content": system_text}]
+    
+    # Add conversation history if provided
+    if history:
+        messages.extend(history)
+    
+    # Add current user message
+    messages.append({"role": "user", "content": user_text})
+    
     resp = _oai.chat.completions.create(
         model=OPENAI_MODEL,
-        messages=[
-            {"role": "system", "content": system_text},
-            {"role": "user", "content": user_text},
-        ],
+        messages=messages,
         temperature=0.3,
         max_tokens=700,
     )
@@ -69,3 +75,19 @@ def route_query(message: str) -> Optional[str]:
         return None
 
     return _java_get(path)
+
+def run_agent(user_id: str, message: str, profile, history: List[Dict[str, str]] = None) -> str:
+    """
+    Main agent function that routes queries and generates responses.
+    """
+    # Try Java routes first
+    java_response = route_query(message)
+    if java_response:
+        return java_response
+    
+    # Fall back to OpenAI with context
+    system_prompt = """أنت مورفو، وكيل تسويقي ذكي متخصص في تحليل بيانات المراعي. 
+    أجب باللغة العربية بطريقة ودية ومهنية. ركز على التسويق والتحليل."""
+    
+    # Call answer_with_openai with conversation history
+    return answer_with_openai(message, system_text=system_prompt, history=history)

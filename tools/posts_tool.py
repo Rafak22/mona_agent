@@ -1,4 +1,6 @@
-from .supabase_client import supabase
+import requests
+import os
+from tools.supabase_client import supabase
 from .formatters import format_social_post
 
 def debug_fetch_latest_post():

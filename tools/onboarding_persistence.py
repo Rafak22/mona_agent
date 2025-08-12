@@ -1,5 +1,6 @@
+import os
 import json
-from .supabase_client import supabase
+from tools.supabase_client import supabase
 
 def persist_step_result(user_id: str, conversation_id: str, state: dict, agent_response: dict, current_step: str) -> None:
     # 1) profiles upsert

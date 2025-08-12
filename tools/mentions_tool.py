@@ -1,5 +1,7 @@
+import requests
+import os
 from datetime import datetime
-from .supabase_client import supabase
+from tools.supabase_client import supabase
 
 def debug_fetch_latest_mention():
     """
