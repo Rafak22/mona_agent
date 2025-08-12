@@ -4,6 +4,7 @@ from typing_extensions import NotRequired
 import os, re
 
 from langgraph.graph import StateGraph, START, END
+import uuid
 from langgraph.types import Command, interrupt
 from langgraph.checkpoint.memory import InMemorySaver
 
@@ -74,13 +75,22 @@ def _clean_url(s: str) -> Optional[str]:
     s = (s or "").strip()
     return s if s and _URL_RE.match(s) else None
 
+def _to_uuid_str(user_id: str) -> str:
+    """Return a valid UUID string for any incoming user_id.
+    If it's already a UUID, keep it; otherwise, derive a stable UUIDv5.
+    """
+    try:
+        return str(uuid.UUID(str(user_id)))
+    except Exception:
+        return str(uuid.uuid5(uuid.NAMESPACE_URL, f"onb:{user_id}"))
+
 def _save_profile_to_db(state: OBState) -> None:
     if not _sb:
         return
     p = state.get("profile", {}) or {}
     payload = {k: v for k, v in p.items() if k in _ALLOWED_DB_KEYS}
-    if "user_id" not in payload and state.get("user_id"):
-        payload["user_id"] = state["user_id"]
+    if state.get("user_id"):
+        payload["user_id"] = _to_uuid_str(state["user_id"])  # coerce to UUID
     try:
         _sb.table("profiles").upsert(payload, on_conflict="user_id").execute()
     except Exception as e:
