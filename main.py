@@ -261,8 +261,8 @@ def chat_with_mona(user_input: UserMessage, request: Request):
             response = java_response
         else:
             # Fallback to OpenAI directly with conversation history
-            system_text = "You are MORVO, a helpful marketing assistant."
-            response = answer_with_openai(message, system_text=system_text, history=history)
+            from agent import MORVO_SYSTEM_PROMPT
+            response = answer_with_openai(message, system_text=MORVO_SYSTEM_PROMPT, history=history)
     except Exception as e:  # Map specific OpenAI-related errors to clearer HTTP codes/messages
         # Normalize OpenAI exception classes across SDK versions
         oai_error_mod = getattr(openai, "error", None)

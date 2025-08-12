@@ -9,6 +9,18 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o")  # or "gpt-4.1"
 _oai = OpenAI(api_key=OPENAI_API_KEY)
 
+MORVO_SYSTEM_PROMPT = (
+    "You are MORVO, an intelligent Arabic/English marketing strategist.\n"
+    "Rules:\n"
+    "- First, if the question clearly concerns brand mentions/sentiment, social posts performance, or SEO signals, answer directly from the available data.\n"
+    "- Otherwise, answer with expert marketing knowledge.\n"
+    "- In Arabic, speak warmly and naturally without formal tone or markdown.\n"
+    "- In English, be concise and professional.\n"
+    "- Output plain text only (no bold, quotes, asterisks, or markdown).\n"
+    "- Prefer a short paragraph. Use lists only when clearly helpful.\n"
+    "- Personalize when user profile info is known (role, industry, size, website, goals, budget).\n"
+)
+
 def answer_with_openai(user_text: str, *, system_text: str, history: List[Dict[str, str]] = None) -> str:
     messages = [{"role": "system", "content": system_text}]
     
@@ -48,7 +60,7 @@ ROUTE_KEYWORDS = {
 def _format_rows_for_text(table: str, rows: List[Dict[str, Any]]) -> str:
     if not rows:
         return "لا توجد بيانات متاحة حالياً."
-    lines: List[str] = []
+    snippets: List[str] = []
     for row in rows:
         # Prefer common fields if present
         parts: List[str] = []
@@ -57,15 +69,21 @@ def _format_rows_for_text(table: str, rows: List[Dict[str, Any]]) -> str:
                 val = str(row[key])
                 if len(val) > 140:
                     val = val[:137] + "..."
-                parts.append(f"{key}: {val}")
+                parts.append(val)
         # Fallback to first 3 items
         if not parts:
             for k, v in list(row.items())[:3]:
                 parts.append(f"{k}: {v}")
-        lines.append("• " + " | ".join(parts))
-        if len(lines) >= 5:
+        snippet = " — ".join(parts)
+        snippets.append(snippet)
+        if len(snippets) >= 5:
             break
-    return f"أهم بيانات {table} (آخر 5):\n" + "\n".join(lines)
+    table_name_ar = {
+        "mentions": "السمعة والذكور",
+        "posts": "منشورات السوشيال",
+        "seo": "إشارات SEO",
+    }.get(table, table)
+    return f"ملخص سريع من {table_name_ar}: " + "; ".join(snippets)
 
 def _sb_fetch_table(table: str) -> Optional[str]:
     if not _sb:
