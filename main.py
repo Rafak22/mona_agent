@@ -294,17 +294,14 @@ def chat_with_mona(user_input: UserMessage, request: Request):
 @app.post("/onboarding/start_compat")
 def onboarding_start_compat(event: OBStartReq):
     res = onboarding_start(event)
-    ui = res.get("ui") or {}
-    msg = ui.get("message") or ""
-    return {"reply": msg}
+    return {"reply": res.get("message") or ""}
 
 @app.post("/onboarding/step_compat")
 def onboarding_step_compat(event: OBStepReq):
     res = onboarding_step(event)
-    ui = res.get("ui")
-    if not ui:
+    if res.get("done"):
         return {"reply": "Done!"}
-    return {"reply": ui.get("message") or ""}
+    return {"reply": res.get("message") or ""}
 
 @app.get("/diag")
 def diag():
