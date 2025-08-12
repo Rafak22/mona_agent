@@ -6,7 +6,7 @@ from schema import UserMessage, UserProfileState, UserProfile
 from memory_store import get_user_profile, update_user_profile, users, user_memory
 from tools.conversation_logger import to_uuid, get_or_create_conversation, log_turn_via_rpc
 from onboarding_graph import start_onboarding, resume_onboarding
-from agent import run_agent, answer_with_openai
+from agent import run_agent, answer_with_openai, route_query
 from tools.supabase_client import supabase
 from dotenv import load_dotenv
 from typing import List, Dict, Optional
@@ -190,7 +190,47 @@ def chat_with_mona(user_input: UserMessage, request: Request):
                 log_turn_via_rpc(user_uuid, conversation_id, profile, {}, "cancel_reset", "assistant", reply)
             return {"reply": reply}
 
-    if profile.state == UserProfileState.COMPLETE and message.lower() in ["", "hi", "hello", "ابدأ", "start", "مورفو"]:
+    # If user greets or profile isn't complete, route into onboarding within /chat
+    greeting_triggers = [
+        "",
+        "hi",
+        "hello",
+        "ابدأ",
+        "start",
+        "مورفو",
+        "اهلا",
+        "أهلا",
+        "مرحبا",
+    ]
+    if profile.state != UserProfileState.COMPLETE or message.lower() in greeting_triggers:
+        # If onboarding not started in this session, start; otherwise resume with provided message
+        if profile.state == UserProfileState.COMPLETE:
+            # Start flow
+            ob = start_onboarding(user_input.user_id)
+            # mark as in-progress
+            profile.state = UserProfileState.ASK_NAME
+            update_user_profile(user_input.user_id, profile)
+            ui = ob.get("ui") or {}
+            reply = ui.get("message") or ""
+        else:
+            # Resume flow with the user's message
+            step = resume_onboarding(user_input.user_id, message)
+            if step.get("done"):
+                profile.state = UserProfileState.COMPLETE
+                update_user_profile(user_input.user_id, profile)
+                reply = "تم حفظ بياناتك. كيف أقدر أساعدك اليوم؟"
+            else:
+                ui = step.get("ui") or {}
+                reply = ui.get("message") or ""
+
+        # Save messages
+        save_message_to_db(user_input.user_id, "user", message)
+        save_message_to_db(user_input.user_id, "assistant", reply)
+        if conversation_id:
+            log_turn_via_rpc(user_uuid, conversation_id, profile, {}, "onboarding", "user", message)
+            log_turn_via_rpc(user_uuid, conversation_id, profile, {}, "onboarding", "assistant", reply)
+        logging.info(f"[chat:onboarding] origin={request.headers.get('origin','')} user_id={user_input.user_id} msg={message[:60]} reply={(reply or '')[:60]}...")
+        return {"reply": reply}
         # Save user message to DB
         save_message_to_db(user_input.user_id, "user", message)
         reply = (
@@ -211,12 +251,18 @@ def chat_with_mona(user_input: UserMessage, request: Request):
     # Get conversation history from Supabase
     history = get_conversation_history(user_input.user_id)
     
-    # Route through simplified agent with conversation history
+    # Route: try Java endpoints first; otherwise call OpenAI directly (no DB dependency)
     origin = request.headers.get("origin") or ""
     logging.info(f"[chat] received origin={origin} user_id={user_input.user_id} msg={message[:80]}...")
 
     try:
-        response = run_agent(user_input.user_id, message, profile, history)
+        java_response = route_query(message)
+        if java_response:
+            response = java_response
+        else:
+            # Fallback to OpenAI directly with conversation history
+            system_text = "You are MORVO, a helpful marketing assistant."
+            response = answer_with_openai(message, system_text=system_text, history=history)
     except Exception as e:  # Map specific OpenAI-related errors to clearer HTTP codes/messages
         # Normalize OpenAI exception classes across SDK versions
         oai_error_mod = getattr(openai, "error", None)
