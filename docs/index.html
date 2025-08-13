@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width,initial-scale=1" />
+	<title>MORVO Demo</title>
+	<style>
+		body { font-family: system-ui, Arial, sans-serif; margin: 20px; color: #111; }
+		.container { max-width: 820px; margin: 0 auto; }
+		h2 { margin-top: 0; }
+		label { display: block; font-weight: 600; margin-bottom: 6px; }
+		input, button { padding: 10px; font-size: 16px; }
+		.row { display: flex; gap: 10px; align-items: center; margin-bottom: 12px; }
+		.row > * { flex: 1; }
+		.small { color: #666; font-size: 13px; }
+		#onb { margin: 8px 0 14px; color: #444; }
+		#log { border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; height: 460px; overflow: auto; background: #fafafa; }
+		.msg { margin: 6px 0; padding: 8px 10px; border-radius: 10px; max-width: 92%; white-space: pre-wrap; }
+		.msg.user { background: #e6ffef; border: 1px solid #b9f6cc; margin-left: auto; }
+		.msg.assistant { background: #eef5ff; border: 1px solid #c7ddff; margin-right: auto; }
+		.footer { margin-top: 14px; color: #777; font-size: 12px; text-align: center; }
+	</style>
+</head>
+<body>
+	<div class="container">
+		<h2>واجهة MORVO (بديل سريع للعرض)</h2>
+		<p class="small">أدخل رابط واجهة الـ API الخاصة بباكند FastAPI على Railway، ثم ابدأ التعارف أو أرسل رسالة.</p>
+
+		<div class="row">
+			<div>
+				<label for="apiBase">رابط API Base</label>
+				<input id="apiBase" placeholder="مثال: https://your-backend.onrailway.app" />
+			</div>
+			<div>
+				<label for="userId">معرّف المستخدم</label>
+				<input id="userId" value="user_demo_1" />
+			</div>
+		</div>
+
+		<div class="row" style="margin-top: -8px;">
+			<button id="startOnb" style="flex: 0 0 220px;">بدء التعارف</button>
+			<div id="onb"></div>
+		</div>
+
+		<div id="log" aria-live="polite" aria-label="سجل المحادثة"></div>
+
+		<div class="row">
+			<input id="message" placeholder="اكتب رسالتك هنا…" />
+			<button id="send" style="flex: 0 0 120px;">إرسال</button>
+		</div>
+
+		<p class="small">تلميح: بإمكانك تغيير الـ API Base في أي وقت أثناء التجربة.</p>
+		<div class="footer">© MORVO Demo</div>
+	</div>
+
+	<script>
+		const $ = (id) => document.getElementById(id);
+		const logBox = $("log");
+
+		function apiBase() {
+			return ($("apiBase").value || "").replace(/\/+$/, "");
+		}
+
+		function addMsg(role, text) {
+			const div = document.createElement("div");
+			div.className = `msg ${role}`;
+			div.textContent = text;
+			logBox.appendChild(div);
+			logBox.scrollTop = logBox.scrollHeight;
+		}
+
+		async function startOnboarding() {
+			const base = apiBase();
+			const user_id = $("userId").value.trim();
+			if (!base || !user_id) {
+				$("onb").textContent = "تأكد من تعبئة رابط الـ API ومعرّف المستخدم";
+				return;
+			}
+			$("onb").textContent = "جاري البدء…";
+			try {
+				const r = await fetch(`${base}/onboarding/start`, {
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({ user_id })
+				});
+				const data = await r.json();
+				$("onb").textContent = data?.ui?.message || (r.ok ? "تم البدء ✅" : `خطأ: HTTP ${r.status}`);
+				if (data?.ui?.message) addMsg("assistant", data.ui.message);
+			} catch (e) {
+				$("onb").textContent = "تعذر البدء. تحقق من الرابط أو إعدادات CORS";
+			}
+		}
+
+		async function sendMessage() {
+			const base = apiBase();
+			const user_id = $("userId").value.trim();
+			const message = $("message").value.trim();
+			if (!base || !user_id || !message) return;
+			addMsg("user", `أنا: ${message}`);
+			$("message").value = "";
+			try {
+				const r = await fetch(`${base}/chat`, {
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({ user_id, message })
+				});
+				const data = await r.json();
+				const reply = data?.reply || (r.ok ? "[بدون رد]" : `خطأ: HTTP ${r.status}`);
+				addMsg("assistant", `مورفو: ${reply}`);
+			} catch (e) {
+				addMsg("assistant", "فشل الطلب. تحقق من رابط الـ API و CORS.");
+			}
+		}
+
+		$("startOnb").onclick = startOnboarding;
+		$("send").onclick = sendMessage;
+		$("message").addEventListener("keydown", (e) => { if (e.key === "Enter") sendMessage(); });
+	</script>
+</body>
+</html>
+
+
