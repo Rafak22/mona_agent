@@ -99,6 +99,26 @@ def cors_preflight(path: str, request: Request) -> Response:
     logging.info(f"[preflight] path=/{path} origin={origin} method={acrm} headers={acrh}")
     return Response(status_code=204)
 
+# Simple classifiers to detect questions vs onboarding intent
+def _is_question(text: str) -> bool:
+    t = (text or "").strip().lower()
+    if not t:
+        return False
+    if ("?" in t) or ("؟" in t) or t.endswith("?") or t.endswith("؟"):
+        return True
+    q_starts = (
+        "ما", "ماهي", "متى", "كيف", "ليش", "لماذا", "هل", "كم", "وين", "أين", "وش", "ايش",
+        "what", "how", "why", "when", "where", "who", "which", "can", "should"
+    )
+    return any(t.startswith(s) for s in q_starts)
+
+def _wants_onboarding(text: str) -> bool:
+    t = (text or "").strip().lower()
+    if not t:
+        return True
+    triggers = ("ابدأ", "ابدا", "بدء", "تعريف", "سجل", "onboard", "onboarding", "start")
+    return any(x in t for x in triggers)
+
 @app.get("/")
 def read_root():
     return {"message": "👋 MORVO is ready to analyze Almarai data!"}
@@ -206,7 +226,7 @@ def chat_with_mona(user_input: UserMessage, request: Request):
                 log_turn_via_rpc(user_uuid, conversation_id, profile, {}, "cancel_reset", "assistant", reply)
             return {"reply": reply}
 
-    # If user greets, profile isn't complete, or there is no profile row in Supabase, route into onboarding within /chat
+    # If user greets, profile isn't complete, or there is no profile row in Supabase, choose between onboarding or answering directly
     greeting_triggers = [
         "",
         "hi",
@@ -228,7 +248,24 @@ def chat_with_mona(user_input: UserMessage, request: Request):
         except Exception as e:
             logging.info(f"[chat] profile_exists check skipped: {e}")
 
-    if (profile.state != UserProfileState.COMPLETE) or (not profile_exists) or (message.lower() in greeting_triggers):
+    needs_onboarding = (profile.state != UserProfileState.COMPLETE) or (not profile_exists)
+    is_greeting = message.lower() in greeting_triggers
+    wants_onb = _wants_onboarding(message)
+    is_q = _is_question(message)
+
+    # Strict onboarding-first mode for new users (frontend handles the flow)
+    if not profile_exists and not wants_onb:
+        reply = (
+            "مرحباً بك في مورفو! قبل ما نبدأ بالإجابات، خلّينا نجهّز ملفك التسويقي بسرعة. "
+            "اضغط على زر البدء في الواجهة أو أرسل كلمة: ابدأ"
+        )
+        save_message_to_db(user_input.user_id, "user", message)
+        save_message_to_db(user_input.user_id, "assistant", reply)
+        if conversation_id:
+            log_turn_via_rpc(user_uuid, conversation_id, profile, {}, "onboarding_required", "assistant", reply)
+        return {"reply": reply}
+
+    if needs_onboarding and (is_greeting or wants_onb) and not is_q:
         WELCOME_TEXT = (
             "حياك الله! أنا MORVO 🤝 مستشارتك الذكية للتسويق. أساعدك في تحليل السمعة والمنشورات وSEO،"
             " ونبني خطط تحقق عائد واضح. خلّينا نبدأ بالتعارف… وش اسمك الأول؟"
@@ -238,7 +275,7 @@ def chat_with_mona(user_input: UserMessage, request: Request):
             # Start flow
             ob = start_onboarding(user_input.user_id)
             # mark as in-progress
-            profile.state = UserProfileState.ASK_NAME
+            profile.state = UserProfileState.ASK_NAMEimage.png 
             update_user_profile(user_input.user_id, profile)
             ui = ob.get("ui") or {}
             reply = ui.get("message") or WELCOME_TEXT
@@ -310,6 +347,8 @@ def chat_with_mona(user_input: UserMessage, request: Request):
             # Fallback to OpenAI directly with conversation history
             from agent import MORVO_SYSTEM_PROMPT
             response = answer_with_openai(message, system_text=MORVO_SYSTEM_PROMPT, history=history)
+        if needs_onboarding and not (is_greeting or wants_onb):
+            response = (response or "").strip() + "\n\nملاحظة: ما تعرّفنا عليك بعد. إذا حاب نجهّز التجربة حسب نشاطك، اكتب: ابدأ"
     except Exception as e:  # Map specific OpenAI-related errors to clearer HTTP codes/messages
         # Normalize OpenAI exception classes across SDK versions
         oai_error_mod = getattr(openai, "error", None)
@@ -337,6 +376,18 @@ def chat_with_mona(user_input: UserMessage, request: Request):
 
     logging.info(f"[chat] origin={origin} user_id={user_input.user_id} msg={message[:60]} reply={(response or '')[:60]}...")
     return {"reply": response}
+
+@app.get("/profile/status")
+def profile_status(user_id: str):
+    try:
+        uid = str(to_uuid(user_id))
+        if _sb:
+            res = _sb.table("profiles").select("user_id").eq("user_id", uid).limit(1).execute()
+            return {"has_profile": bool(res.data)}
+        return {"has_profile": False}
+    except Exception as e:
+        logging.info(f"[profile_status] error: {e}")
+        return {"has_profile": False}
 
 @app.post("/onboarding/start_compat")
 def onboarding_start_compat(event: OBStartReq):

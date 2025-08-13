@@ -97,15 +97,15 @@ def _save_profile_to_db(state: OBState) -> None:
         print(f"[supabase] upsert skipped: {e}")
 
 def _display_name(state: OBState) -> str:
-    return state.get("preferred_name") or state.get("user_name") or "صديقي"
+    return state.get("preferred_name") or state.get("user_name") or "ضيفنا الكريم"
 
 # ---------- Nodes (Arabic, Saudi-friendly) ----------
 def n_intro_name(state: OBState) -> Dict[str, Any]:
     msg = (
-        "حياك الله! أنا *MORVO*، مستشارتك الذكية للتسويق في السوق السعودي 🇸🇦.\n"
+        "حياك الله! أنا MORVO 🤝 مستشارتك الذكية للتسويق في السوق السعودي 🇸🇦.\n"
         "أقدر أساعدك في تحليل الحملات، متابعة سمعة علامتك، تحسين الظهور في قوقل (SEO)، "
         "ووضع استراتيجيات تحقق عائد واضح.\n\n"
-        "خلّينا نبدأ بالتعارف… وش *اسمك الأوّل*؟"
+        "خلّينا نبدأ بالتعارف… وش اسمك الأول؟"
     )
     while True:
         val = ask(msg, ui_type="input")
@@ -117,7 +117,7 @@ def n_intro_name(state: OBState) -> Dict[str, Any]:
 def n_preferred_choice(state: OBState) -> Dict[str, Any]:
     nm = state.get("user_name", "")
     choice = ask(
-        f"تشرفنا يا *{nm}! تحب أناديك بـ **{nm}*؟",
+        f"تشرفنا يا {nm}! تفضّل أناديك بنفس الاسم أم اسم مختلف؟",
         options=["إيّه، نفس الاسم", "أفضّل اسم مختلف"],
         ui_type="options",
     )
@@ -125,12 +125,12 @@ def n_preferred_choice(state: OBState) -> Dict[str, Any]:
 
 def n_preferred_input(state: OBState) -> Dict[str, Any]:
     nm = state.get("user_name", "")
-    val = ask(f"اكتب *الاسم اللي تحب نناديك فيه* (أو اكتب {nm}):", ui_type="input")
+    val = ask(f"اكتب الاسم اللي تحب نناديك فيه (أو اكتب {nm}):", ui_type="input")
     pn = _clean_name(str(val)) or nm
     return {"preferred_name": pn}
 
 def n_role(state: OBState) -> Dict[str, Any]:
-    val = ask("وش *دورك* في العمل؟",
+    val = ask("وش دورك في العمل؟",
               options=["مدير/ة تسويق", "مختص/ة تسويق", "مالك/ـة مشروع", "رائد/ة أعمال", "مدير/ة عام", "أخرى"],
               ui_type="options")
     prof = state.get("profile", {})
@@ -138,13 +138,13 @@ def n_role(state: OBState) -> Dict[str, Any]:
     return {"profile": prof}
 
 def n_industry(state: OBState) -> Dict[str, Any]:
-    val = ask("نشاط شركتكم *إيش*؟ (مثال: تجارة إلكترونية، مطاعم، تعليم، تقنية…)", ui_type="input")
+    val = ask("نشاط شركتكم إيش؟ (مثال: تجارة إلكترونية، مطاعم، تعليم، تقنية…)", ui_type="input")
     prof = state.get("profile", {})
     prof["industry"] = str(val).strip()
     return {"profile": prof}
 
 def n_company_size(state: OBState) -> Dict[str, Any]:
-    val = ask("كم *حجم الشركة*؟",
+    val = ask("كم حجم الشركة؟",
               options=["👤 شخص واحد (فريلانسر)", "👥 2–10 موظفين", "🏢 11–50 موظف", "🏗 51+ موظف"],
               ui_type="options")
     prof = state.get("profile", {})
@@ -152,7 +152,7 @@ def n_company_size(state: OBState) -> Dict[str, Any]:
     return {"profile": prof}
 
 def n_website_status(state: OBState) -> Dict[str, Any]:
-    val = ask("عندكم *موقع إلكتروني*؟",
+    val = ask("عندكم موقع إلكتروني؟",
               options=["✅ نعم – شغّال", "🔧 نعم – يحتاج تطوير", "🏗 تحت الإنشاء", "❌ لا"],
               ui_type="options")
     prof = state.get("profile", {})
@@ -171,7 +171,7 @@ def n_website_url(state: OBState) -> Dict[str, Any]:
         msg = "الرابط غير صالح. مثال: https://example.com"
 
 def n_goals(state: OBState) -> Dict[str, Any]:
-    msg = "وش أهم *أهدافك التسويقية*؟ اكتبها مفصولة بفواصل (،). مثال: زيادة الوعي، تحسين التحويلات، ترتيب SEO…"
+    msg = "وش أهم أهدافك التسويقية؟ اكتبها مفصولة بفواصل (،). مثال: زيادة الوعي، تحسين التحويلات، ترتيب SEO…"
     val = ask(msg, ui_type="input")
     items = [x.strip() for x in re.split(r"[،,]", str(val)) if x.strip()]
     prof = state.get("profile", {})
@@ -179,7 +179,7 @@ def n_goals(state: OBState) -> Dict[str, Any]:
     return {"profile": prof}
 
 def n_budget(state: OBState) -> Dict[str, Any]:
-    val = ask("كم تقريباً *ميزانيتكم الشهرية* للتسويق؟",
+    val = ask("كم تقريباً ميزانيتكم الشهرية للتسويق؟",
               options=["أقل من 5,000 ريال", "5,000–15,000 ريال", "15,000–50,000 ريال", "أكثر من 50,000 ريال", "حسب المشروع", "مو محددة"],
               ui_type="options")
     prof = state.get("profile", {})
@@ -191,7 +191,7 @@ def n_save_and_finish(state: OBState) -> Dict[str, Any]:
     dn = _display_name(state)
     # final informational message (your FE can ignore; it's here for completeness)
     state["ui"] = {"ui_type": "input",
-                   "message": f"تم يا *{dn}*! ✅ الآن اسألني أي شيء في التسويق وبعطيك توصيات عملية."}
+                   "message": f"تم يا {dn}! ✅ الآن اسألني أي شيء في التسويق وبعطيك توصيات عملية."}
     return {}
 
 # ---------- Graph wiring ----------
