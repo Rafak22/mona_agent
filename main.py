@@ -260,7 +260,9 @@ def chat_with_mona(user_input: UserMessage, request: Request):
     # Only do onboarding for truly new users who don't have a profile in the database
     # OR if user is currently in onboarding state
     logging.info(f"[chat] profile_exists={profile_exists}, profile.state={profile.state}")
-    if not profile_exists or profile.state == UserProfileState.IN_ONBOARDING:
+    
+    # If user has no profile, handle onboarding
+    if not profile_exists:
         # Check if user wants to start onboarding
         wants_onb = _wants_onboarding(message)
         is_greeting = message.lower() in ["", "hi", "hello", "ابدأ", "start", "مورفو", "اهلا", "أهلا", "مرحبا"]
@@ -310,6 +312,28 @@ def chat_with_mona(user_input: UserMessage, request: Request):
                 log_turn_via_rpc(user_uuid, conversation_id, profile, {}, "welcome", "user", message)
                 log_turn_via_rpc(user_uuid, conversation_id, profile, {}, "welcome", "assistant", reply)
             return {"reply": reply}
+    
+    # If user is currently in onboarding state, continue onboarding
+    elif profile.state == UserProfileState.IN_ONBOARDING:
+        # Continue existing onboarding
+        step = resume_onboarding(user_input.user_id, message)
+        if step.get("done"):
+            profile.state = UserProfileState.COMPLETE
+            update_user_profile(user_input.user_id, profile)
+            logging.info(f"[chat] onboarding completed for user_id: {user_input.user_id}")
+            reply = "تم حفظ بياناتك ✅ كيف أقدر أساعدك اليوم؟"
+        else:
+            ui = step.get("ui") or {}
+            reply = ui.get("message") or "حياك الله! أنا MORVO 🤝 مستشارتك الذكية للتسويق. خلّينا نبدأ بالتعارف… وش اسمك الأول؟"
+        
+        # Save messages
+        save_message_to_db(user_input.user_id, "user", message)
+        save_message_to_db(user_input.user_id, "assistant", reply)
+        if conversation_id:
+            log_turn_via_rpc(user_uuid, conversation_id, profile, {}, "onboarding", "user", message)
+            log_turn_via_rpc(user_uuid, conversation_id, profile, {}, "onboarding", "assistant", reply)
+        logging.info(f"[chat:onboarding] origin={request.headers.get('origin','')} user_id={user_input.user_id} msg={message[:60]} reply={(reply or '')[:60]}...")
+        return {"reply": reply}
 
     # If profile exists and is complete, greet returning user once
     greeting_triggers = ["", "hi", "hello", "ابدأ", "start", "مورفو", "اهلا", "أهلا", "مرحبا"]
