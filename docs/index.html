@@ -9,70 +9,59 @@
             font-family: system-ui, Arial, sans-serif; 
             margin: 0; 
             padding: 20px; 
-            background: #f5f5f5; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
             color: #333; 
+            min-height: 100vh;
         }
         .container { 
             max-width: 900px; 
             margin: 0 auto; 
             background: white; 
-            border-radius: 12px; 
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1); 
+            border-radius: 16px; 
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1); 
             overflow: hidden; 
         }
         .header { 
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
             color: white; 
-            padding: 20px; 
+            padding: 30px; 
             text-align: center; 
         }
-        .header h1 { margin: 0; font-size: 24px; }
-        .header p { margin: 8px 0 0; opacity: 0.9; font-size: 14px; }
+        .header h1 { margin: 0; font-size: 28px; font-weight: 700; }
+        .header p { margin: 12px 0 0; opacity: 0.9; font-size: 16px; }
         
-        .config-section { 
-            padding: 20px; 
+        .start-section { 
+            padding: 30px; 
+            text-align: center; 
+            background: #f8f9fa; 
             border-bottom: 1px solid #eee; 
-            background: #fafafa; 
-        }
-        .config-row { 
-            display: flex; 
-            gap: 15px; 
-            margin-bottom: 15px; 
-            align-items: end; 
-        }
-        .config-group { flex: 1; }
-        .config-group label { 
-            display: block; 
-            font-weight: 600; 
-            margin-bottom: 5px; 
-            color: #555; 
-        }
-        .config-group input { 
-            width: 100%; 
-            padding: 10px; 
-            border: 1px solid #ddd; 
-            border-radius: 6px; 
-            font-size: 14px; 
-            box-sizing: border-box; 
         }
         .btn { 
-            padding: 10px 20px; 
+            padding: 15px 30px; 
             border: none; 
-            border-radius: 6px; 
-            font-size: 14px; 
+            border-radius: 12px; 
+            font-size: 16px; 
+            font-weight: 600; 
             cursor: pointer; 
-            transition: all 0.2s; 
+            transition: all 0.3s ease; 
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15); 
         }
         .btn-primary { 
-            background: #667eea; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
             color: white; 
         }
-        .btn-primary:hover { background: #5a6fd8; }
+        .btn-primary:hover { 
+            transform: translateY(-2px); 
+            box-shadow: 0 6px 20px rgba(0,0,0,0.2); 
+        }
         .btn-secondary { 
             background: #6c757d; 
             color: white; 
         }
-        .btn-secondary:hover { background: #5a6268; }
+        .btn-secondary:hover { 
+            background: #5a6268; 
+            transform: translateY(-1px); 
+        }
         
         .chat-container { 
             display: flex; 
@@ -80,143 +69,211 @@
         }
         .chat-messages { 
             flex: 1; 
-            padding: 20px; 
+            padding: 25px; 
             overflow-y: auto; 
-            background: #f8f9fa; 
+            background: #fafbfc; 
         }
         .message { 
-            margin: 10px 0; 
+            margin: 15px 0; 
             display: flex; 
             align-items: flex-start; 
-            gap: 10px; 
+            gap: 12px; 
         }
         .message.user { flex-direction: row-reverse; }
         .message-avatar { 
-            width: 35px; 
-            height: 35px; 
+            width: 40px; 
+            height: 40px; 
             border-radius: 50%; 
             display: flex; 
             align-items: center; 
             justify-content: center; 
             font-weight: bold; 
             color: white; 
-            font-size: 14px; 
+            font-size: 16px; 
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1); 
         }
-        .message.user .message-avatar { background: #28a745; }
-        .message.assistant .message-avatar { background: #667eea; }
+        .message.user .message-avatar { 
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%); 
+        }
+        .message.assistant .message-avatar { 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+        }
         .message-content { 
-            max-width: 70%; 
-            padding: 12px 16px; 
-            border-radius: 18px; 
+            max-width: 75%; 
+            padding: 16px 20px; 
+            border-radius: 20px; 
             white-space: pre-wrap; 
             word-wrap: break-word; 
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08); 
         }
         .message.user .message-content { 
-            background: #e3f2fd; 
+            background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%); 
             color: #1565c0; 
         }
         .message.assistant .message-content { 
-            background: #f3e5f5; 
+            background: linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%); 
             color: #7b1fa2; 
         }
         
         .chat-input { 
-            padding: 20px; 
+            padding: 25px; 
             border-top: 1px solid #eee; 
             background: white; 
         }
         .input-row { 
             display: flex; 
-            gap: 10px; 
+            gap: 12px; 
         }
         .input-row input { 
             flex: 1; 
-            padding: 12px; 
-            border: 1px solid #ddd; 
-            border-radius: 6px; 
-            font-size: 14px; 
+            padding: 15px 20px; 
+            border: 2px solid #e0e0e0; 
+            border-radius: 12px; 
+            font-size: 16px; 
+            transition: border-color 0.3s ease; 
+        }
+        .input-row input:focus { 
+            outline: none; 
+            border-color: #667eea; 
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1); 
         }
         .input-row button { 
-            padding: 12px 20px; 
-            background: #667eea; 
+            padding: 15px 25px; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
             color: white; 
             border: none; 
-            border-radius: 6px; 
+            border-radius: 12px; 
             cursor: pointer; 
-            font-size: 14px; 
+            font-size: 16px; 
+            font-weight: 600; 
+            transition: all 0.3s ease; 
+        }
+        .input-row button:hover { 
+            transform: translateY(-1px); 
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15); 
         }
         
         .onboarding-form { 
             background: white; 
-            border: 1px solid #e0e0e0; 
-            border-radius: 8px; 
-            margin: 10px 0; 
+            border: 2px solid #e8f4fd; 
+            border-radius: 16px; 
+            margin: 15px 0; 
             overflow: hidden; 
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08); 
         }
         .form-step { 
             display: none; 
-            padding: 20px; 
+            padding: 30px; 
         }
         .form-step.active { 
             display: block; 
         }
+        .form-step h4 { 
+            margin: 0 0 25px 0; 
+            color: #2c3e50; 
+            font-size: 20px; 
+            font-weight: 700; 
+            display: flex; 
+            align-items: center; 
+            gap: 10px; 
+        }
+        .form-step h4::before { 
+            content: "📝"; 
+            font-size: 24px; 
+        }
         .form-group { 
-            margin-bottom: 15px; 
+            margin-bottom: 20px; 
         }
         .form-group label { 
             display: block; 
             font-weight: 600; 
-            margin-bottom: 5px; 
-            color: #555; 
+            margin-bottom: 8px; 
+            color: #34495e; 
+            font-size: 15px; 
         }
         .form-group input, .form-group select { 
             width: 100%; 
-            padding: 10px; 
-            border: 1px solid #ddd; 
-            border-radius: 6px; 
-            font-size: 14px; 
+            padding: 12px 16px; 
+            border: 2px solid #e0e0e0; 
+            border-radius: 10px; 
+            font-size: 15px; 
             box-sizing: border-box; 
+            transition: all 0.3s ease; 
+            background: #fafbfc; 
+        }
+        .form-group input:focus, .form-group select:focus { 
+            outline: none; 
+            border-color: #667eea; 
+            background: white; 
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1); 
         }
         .form-group textarea { 
             width: 100%; 
-            padding: 10px; 
-            border: 1px solid #ddd; 
-            border-radius: 6px; 
-            font-size: 14px; 
+            padding: 12px 16px; 
+            border: 2px solid #e0e0e0; 
+            border-radius: 10px; 
+            font-size: 15px; 
             box-sizing: border-box; 
-            min-height: 80px; 
+            min-height: 100px; 
             resize: vertical; 
+            transition: all 0.3s ease; 
+            background: #fafbfc; 
+            font-family: inherit; 
+        }
+        .form-group textarea:focus { 
+            outline: none; 
+            border-color: #667eea; 
+            background: white; 
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1); 
         }
         .form-buttons { 
             display: flex; 
-            gap: 10px; 
+            gap: 12px; 
             justify-content: flex-end; 
-            margin-top: 20px; 
+            margin-top: 25px; 
         }
         
         .status { 
-            padding: 10px; 
-            margin: 10px 0; 
-            border-radius: 6px; 
+            padding: 12px 20px; 
+            margin: 15px 0; 
+            border-radius: 10px; 
             font-size: 14px; 
+            font-weight: 500; 
+            text-align: center; 
         }
         .status.success { 
-            background: #d4edda; 
+            background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%); 
             color: #155724; 
             border: 1px solid #c3e6cb; 
         }
         .status.error { 
-            background: #f8d7da; 
+            background: linear-gradient(135deg, #f8d7da 0%, #f5c6cb 100%); 
             color: #721c24; 
             border: 1px solid #f5c6cb; 
         }
         .status.info { 
-            background: #d1ecf1; 
+            background: linear-gradient(135deg, #d1ecf1 0%, #bee5eb 100%); 
             color: #0c5460; 
             border: 1px solid #bee5eb; 
         }
         
         .hidden { display: none; }
+        
+        /* Custom scrollbar */
+        .chat-messages::-webkit-scrollbar {
+            width: 6px;
+        }
+        .chat-messages::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 3px;
+        }
+        .chat-messages::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 3px;
+        }
+        .chat-messages::-webkit-scrollbar-thumb:hover {
+            background: #a8a8a8;
+        }
     </style>
 </head>
 <body>
@@ -226,14 +283,8 @@
             <p>ابدأ المحادثة مباشرة مع المساعد التسويقي الذكي</p>
         </div>
         
-        <div class="config-section">
-            <div class="config-row">
-                <div class="config-group">
-                    <label for="apiBase">رابط API Base</label>
-                    <input id="apiBase" value="https://monaagent-production-123a.up.railway.app" placeholder="https://your-backend.up.railway.app" />
-                </div>
-                <button id="startOnb" class="btn btn-primary">بدء التعارف</button>
-            </div>
+        <div class="start-section">
+            <button id="startOnb" class="btn btn-primary">🚀 بدء التعارف</button>
             <div id="status"></div>
         </div>
         
@@ -249,7 +300,7 @@
         <div class="chat-input">
             <div class="input-row">
                 <input id="messageInput" placeholder="اكتب رسالتك هنا..." />
-                <button id="sendBtn">إرسال</button>
+                <button id="sendBtn">📤 إرسال</button>
             </div>
         </div>
     </div>
@@ -258,6 +309,7 @@
         let currentStep = 1;
         let onboardingData = {};
         let currentUserId = 'user_' + Date.now(); // Generate unique user ID
+        const API_BASE = 'https://monaagent-production-123a.up.railway.app'; // Hardcoded API base
         
         const $ = (id) => document.getElementById(id);
         
@@ -295,11 +347,11 @@
                             <div class="form-step active" id="step1">
                                 <h4>الخطوة الأولى: معلومات أساسية</h4>
                                 <div class="form-group">
-                                    <label for="userName">الاسم الأول</label>
+                                    <label for="userName">👤 الاسم الأول</label>
                                     <input id="userName" placeholder="أدخل اسمك الأول" />
                                 </div>
                                 <div class="form-group">
-                                    <label for="userRole">الدور الوظيفي</label>
+                                    <label for="userRole">💼 الدور الوظيفي</label>
                                     <select id="userRole">
                                         <option value="">اختر دورك</option>
                                         <option value="مدير/ة تسويق">مدير/ة تسويق</option>
@@ -311,18 +363,18 @@
                                     </select>
                                 </div>
                                 <div class="form-buttons">
-                                    <button class="btn btn-secondary" onclick="nextStep()">التالي</button>
+                                    <button class="btn btn-secondary" onclick="nextStep()">التالي ➡️</button>
                                 </div>
                             </div>
                             
                             <div class="form-step" id="step2">
                                 <h4>الخطوة الثانية: معلومات الشركة</h4>
                                 <div class="form-group">
-                                    <label for="industry">نشاط الشركة</label>
+                                    <label for="industry">🏢 نشاط الشركة</label>
                                     <input id="industry" placeholder="مثال: تجارة إلكترونية، مطاعم، تعليم..." />
                                 </div>
                                 <div class="form-group">
-                                    <label for="companySize">حجم الشركة</label>
+                                    <label for="companySize">👥 حجم الشركة</label>
                                     <select id="companySize">
                                         <option value="">اختر الحجم</option>
                                         <option value="👤 شخص واحد (فريلانسر)">👤 شخص واحد (فريلانسر)</option>
@@ -332,15 +384,15 @@
                                     </select>
                                 </div>
                                 <div class="form-buttons">
-                                    <button class="btn btn-secondary" onclick="prevStep()">السابق</button>
-                                    <button class="btn btn-primary" onclick="nextStep()">التالي</button>
+                                    <button class="btn btn-secondary" onclick="prevStep()">⬅️ السابق</button>
+                                    <button class="btn btn-primary" onclick="nextStep()">التالي ➡️</button>
                                 </div>
                             </div>
                             
                             <div class="form-step" id="step3">
                                 <h4>الخطوة الثالثة: الموقع الإلكتروني</h4>
                                 <div class="form-group">
-                                    <label for="websiteStatus">هل لديك موقع إلكتروني؟</label>
+                                    <label for="websiteStatus">🌐 هل لديك موقع إلكتروني؟</label>
                                     <select id="websiteStatus">
                                         <option value="">اختر الحالة</option>
                                         <option value="✅ نعم – شغّال">✅ نعم – شغّال</option>
@@ -350,23 +402,23 @@
                                     </select>
                                 </div>
                                 <div class="form-group" id="websiteUrlGroup" style="display: none;">
-                                    <label for="websiteUrl">رابط الموقع</label>
+                                    <label for="websiteUrl">🔗 رابط الموقع</label>
                                     <input id="websiteUrl" placeholder="https://example.com" />
                                 </div>
                                 <div class="form-buttons">
-                                    <button class="btn btn-secondary" onclick="prevStep()">السابق</button>
-                                    <button class="btn btn-primary" onclick="nextStep()">التالي</button>
+                                    <button class="btn btn-secondary" onclick="prevStep()">⬅️ السابق</button>
+                                    <button class="btn btn-primary" onclick="nextStep()">التالي ➡️</button>
                                 </div>
                             </div>
                             
                             <div class="form-step" id="step4">
                                 <h4>الخطوة الرابعة: الأهداف والميزانية</h4>
                                 <div class="form-group">
-                                    <label for="goals">الأهداف التسويقية الرئيسية</label>
+                                    <label for="goals">🎯 الأهداف التسويقية الرئيسية</label>
                                     <textarea id="goals" placeholder="اكتب أهدافك مفصولة بفواصل، مثال: زيادة الوعي، تحسين التحويلات، ترتيب SEO..."></textarea>
                                 </div>
                                 <div class="form-group">
-                                    <label for="budget">الميزانية الشهرية للتسويق</label>
+                                    <label for="budget">💰 الميزانية الشهرية للتسويق</label>
                                     <select id="budget">
                                         <option value="">اختر الميزانية</option>
                                         <option value="أقل من 5,000 ريال">أقل من 5,000 ريال</option>
@@ -378,8 +430,8 @@
                                     </select>
                                 </div>
                                 <div class="form-buttons">
-                                    <button class="btn btn-secondary" onclick="prevStep()">السابق</button>
-                                    <button class="btn btn-primary" onclick="completeOnboarding()">إكمال التعارف</button>
+                                    <button class="btn btn-secondary" onclick="prevStep()">⬅️ السابق</button>
+                                    <button class="btn btn-primary" onclick="completeOnboarding()">✅ إكمال التعارف</button>
                                 </div>
                             </div>
                         </div>
@@ -406,22 +458,11 @@
             messages.scrollTop = messages.scrollHeight;
         }
         
-        function apiBase() {
-            return ($("apiBase").value || "").replace(/\/+$/, "");
-        }
-        
         async function startOnboarding() {
-            const base = apiBase();
-            
-            if (!base) {
-                showStatus("تأكد من تعبئة رابط الـ API", "error");
-                return;
-            }
-            
             showStatus("جاري بدء التعارف...", "info");
             
             try {
-                const response = await fetch(`${base}/onboarding/start`, {
+                const response = await fetch(`${API_BASE}/onboarding/start`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ user_id: currentUserId })
@@ -483,8 +524,6 @@
             showStatus("جاري حفظ البيانات...", "info");
             
             try {
-                const base = apiBase();
-                
                 // Send onboarding data step by step
                 const steps = [
                     onboardingData.userName,
@@ -498,7 +537,7 @@
                 ];
                 
                 for (let i = 0; i < steps.length; i++) {
-                    const response = await fetch(`${base}/onboarding/step`, {
+                    const response = await fetch(`${API_BASE}/onboarding/step`, {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({ 
@@ -525,16 +564,15 @@
         }
         
         async function sendMessage() {
-            const base = apiBase();
             const message = $("messageInput").value.trim();
             
-            if (!base || !message) return;
+            if (!message) return;
             
             addMessage(message, true);
             $("messageInput").value = "";
             
             try {
-                const response = await fetch(`${base}/chat`, {
+                const response = await fetch(`${API_BASE}/chat`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ user_id: currentUserId, message })
