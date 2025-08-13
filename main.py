@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from schema import UserMessage, UserProfileState, UserProfile
 from memory_store import get_user_profile, update_user_profile, users, user_memory
 from tools.conversation_logger import to_uuid, get_or_create_conversation, log_turn_via_rpc
-from simple_onboarding import start_onboarding, resume_onboarding
+from onboarding_graph import start_onboarding, resume_onboarding
 from agent import run_agent, answer_with_openai, route_query
 from tools.supabase_client import supabase
 from dotenv import load_dotenv
@@ -258,7 +258,9 @@ def chat_with_mona(user_input: UserMessage, request: Request):
             logging.info(f"[chat] profile_exists check skipped: {e}")
 
     # Only do onboarding for truly new users who don't have a profile in the database
-    if not profile_exists:
+    # OR if user is currently in onboarding state
+    logging.info(f"[chat] profile_exists={profile_exists}, profile.state={profile.state}")
+    if not profile_exists or profile.state == UserProfileState.IN_ONBOARDING:
         # Check if user wants to start onboarding
         wants_onb = _wants_onboarding(message)
         is_greeting = message.lower() in ["", "hi", "hello", "ابدأ", "start", "مورفو", "اهلا", "أهلا", "مرحبا"]
@@ -268,7 +270,7 @@ def chat_with_mona(user_input: UserMessage, request: Request):
             if profile.state == UserProfileState.COMPLETE:
                 # Start new onboarding
                 ob = start_onboarding(user_input.user_id)
-                profile.state = UserProfileState.ASK_NAME
+                profile.state = UserProfileState.IN_ONBOARDING
                 update_user_profile(user_input.user_id, profile)
                 ui = ob.get("ui") or {}
                 reply = ui.get("message") or "حياك الله! أنا MORVO 🤝 مستشارتك الذكية للتسويق. خلّينا نبدأ بالتعارف… وش اسمك الأول؟"
@@ -278,6 +280,7 @@ def chat_with_mona(user_input: UserMessage, request: Request):
                 if step.get("done"):
                     profile.state = UserProfileState.COMPLETE
                     update_user_profile(user_input.user_id, profile)
+                    logging.info(f"[chat] onboarding completed for user_id: {user_input.user_id}")
                     reply = "تم حفظ بياناتك ✅ كيف أقدر أساعدك اليوم؟"
                 else:
                     ui = step.get("ui") or {}
