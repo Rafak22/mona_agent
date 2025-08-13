@@ -228,18 +228,6 @@ def chat_with_mona(user_input: UserMessage, request: Request):
                 log_turn_via_rpc(user_uuid, conversation_id, profile, {}, "cancel_reset", "assistant", reply)
             return {"reply": reply}
 
-    # If user greets, profile isn't complete, or there is no profile row in Supabase, choose between onboarding or answering directly
-    greeting_triggers = [
-        "",
-        "hi",
-        "hello",
-        "ابدأ",
-        "start",
-        "مورفو",
-        "اهلا",
-        "أهلا",
-        "مرحبا",
-    ]
     # Check if a profile row exists in Supabase for this user (persistent, not just in-memory)
     profile_exists = False
     if _sb:
@@ -250,78 +238,59 @@ def chat_with_mona(user_input: UserMessage, request: Request):
         except Exception as e:
             logging.info(f"[chat] profile_exists check skipped: {e}")
 
-    needs_onboarding = (profile.state != UserProfileState.COMPLETE) or (not profile_exists)
-    is_greeting = message.lower() in greeting_triggers
-    wants_onb = _wants_onboarding(message)
-    is_q = _is_question(message)
-
-    # Strict onboarding-first mode for new users (frontend handles the flow)
-    if not profile_exists and not wants_onb:
-        reply = (
-            "مرحباً بك في مورفو! قبل ما نبدأ بالإجابات، خلّينا نجهّز ملفك التسويقي بسرعة. "
-            "اضغط على زر البدء في الواجهة أو أرسل كلمة: ابدأ"
-        )
-        save_message_to_db(user_input.user_id, "user", message)
-        save_message_to_db(user_input.user_id, "assistant", reply)
-        if conversation_id:
-            log_turn_via_rpc(user_uuid, conversation_id, profile, {}, "onboarding_required", "assistant", reply)
-        return {"reply": reply}
-
-    if needs_onboarding and (is_greeting or wants_onb) and not is_q:
-        WELCOME_TEXT = (
-            "حياك الله! أنا MORVO 🤝 مستشارتك الذكية للتسويق. أساعدك في تحليل السمعة والمنشورات وSEO،"
-            " ونبني خطط تحقق عائد واضح. خلّينا نبدأ بالتعارف… وش اسمك الأول؟"
-        )
-        # If onboarding not started in this session, start; otherwise resume with provided message
-        if profile.state == UserProfileState.COMPLETE:
-            # Start flow
-            ob = start_onboarding(user_input.user_id)
-            # mark as in-progress
-            profile.state = UserProfileState.ASK_NAMEimage.png 
-            update_user_profile(user_input.user_id, profile)
-            ui = ob.get("ui") or {}
-            reply = ui.get("message") or WELCOME_TEXT
-            if not reply:
-                reply = WELCOME_TEXT
-        else:
-            # Resume flow with the user's message
-            step = resume_onboarding(user_input.user_id, message)
-            if step.get("done"):
-                profile.state = UserProfileState.COMPLETE
+    # Only do onboarding for truly new users who don't have a profile in the database
+    if not profile_exists:
+        # Check if user wants to start onboarding
+        wants_onb = _wants_onboarding(message)
+        is_greeting = message.lower() in ["", "hi", "hello", "ابدأ", "start", "مورفو", "اهلا", "أهلا", "مرحبا"]
+        
+        if wants_onb or is_greeting:
+            # Start onboarding flow
+            if profile.state == UserProfileState.COMPLETE:
+                # Start new onboarding
+                ob = start_onboarding(user_input.user_id)
+                profile.state = UserProfileState.ASK_NAME
                 update_user_profile(user_input.user_id, profile)
-                reply = "تم حفظ بياناتك ✅ كيف أقدر أساعدك اليوم؟"
+                ui = ob.get("ui") or {}
+                reply = ui.get("message") or "حياك الله! أنا MORVO 🤝 مستشارتك الذكية للتسويق. خلّينا نبدأ بالتعارف… وش اسمك الأول؟"
             else:
-                ui = step.get("ui") or {}
-                reply = ui.get("message") or WELCOME_TEXT
-                if not reply:
-                    reply = WELCOME_TEXT
-
-        # Save messages
-        save_message_to_db(user_input.user_id, "user", message)
-        save_message_to_db(user_input.user_id, "assistant", reply)
-        if conversation_id:
-            log_turn_via_rpc(user_uuid, conversation_id, profile, {}, "onboarding", "user", message)
-            log_turn_via_rpc(user_uuid, conversation_id, profile, {}, "onboarding", "assistant", reply)
-        logging.info(f"[chat:onboarding] origin={request.headers.get('origin','')} user_id={user_input.user_id} msg={message[:60]} reply={(reply or '')[:60]}...")
-        return {"reply": reply}
-        # Save user message to DB
-        save_message_to_db(user_input.user_id, "user", message)
-        reply = (
-            "أهلاً! أنا **MORVO** — وكيلتك التسويقية الذكية المتخصصة في تحليل بيانات المراعي.\n\n"
-            "🔍 أقدر أساعدك في:\n"
-            "• تحليل ذكر العلامة التجارية وسمعتها\n"
-            "• متابعة أداء المنشورات على وسائل التواصل\n"
-            "• تحليل أداء SEO والكلمات المفتاحية\n\n"
-            "💡 من وين تحب نبدأ اليوم؟"
-        )
-        # Save assistant reply to DB
-        save_message_to_db(user_input.user_id, "assistant", reply)
-        if conversation_id:
-            log_turn_via_rpc(user_uuid, conversation_id, profile, {}, "greeting", "user", message)
-            log_turn_via_rpc(user_uuid, conversation_id, profile, {}, "greeting", "assistant", reply)
-        return {"reply": reply}
+                # Continue existing onboarding
+                step = resume_onboarding(user_input.user_id, message)
+                if step.get("done"):
+                    profile.state = UserProfileState.COMPLETE
+                    update_user_profile(user_input.user_id, profile)
+                    reply = "تم حفظ بياناتك ✅ كيف أقدر أساعدك اليوم؟"
+                else:
+                    ui = step.get("ui") or {}
+                    reply = ui.get("message") or "حياك الله! أنا MORVO 🤝 مستشارتك الذكية للتسويق. خلّينا نبدأ بالتعارف… وش اسمك الأول؟"
+            
+            # Save messages
+            save_message_to_db(user_input.user_id, "user", message)
+            save_message_to_db(user_input.user_id, "assistant", reply)
+            if conversation_id:
+                log_turn_via_rpc(user_uuid, conversation_id, profile, {}, "onboarding", "user", message)
+                log_turn_via_rpc(user_uuid, conversation_id, profile, {}, "onboarding", "assistant", reply)
+            logging.info(f"[chat:onboarding] origin={request.headers.get('origin','')} user_id={user_input.user_id} msg={message[:60]} reply={(reply or '')[:60]}...")
+            return {"reply": reply}
+        else:
+            # User doesn't want onboarding yet, give them a welcome message
+            reply = (
+                "مرحباً بك في مورفو! أنا مستشارتك الذكية للتسويق. 🚀\n\n"
+                "🔍 أقدر أساعدك في:\n"
+                "• تحليل ذكر العلامة التجارية وسمعتها\n"
+                "• متابعة أداء المنشورات على وسائل التواصل\n"
+                "• تحليل أداء SEO والكلمات المفتاحية\n\n"
+                "💡 من وين تحب نبدأ اليوم؟ أو اكتب 'ابدأ' لتجهيز ملفك التسويقي."
+            )
+            save_message_to_db(user_input.user_id, "user", message)
+            save_message_to_db(user_input.user_id, "assistant", reply)
+            if conversation_id:
+                log_turn_via_rpc(user_uuid, conversation_id, profile, {}, "welcome", "user", message)
+                log_turn_via_rpc(user_uuid, conversation_id, profile, {}, "welcome", "assistant", reply)
+            return {"reply": reply}
 
     # If profile exists and is complete, greet returning user once
+    greeting_triggers = ["", "hi", "hello", "ابدأ", "start", "مورفو", "اهلا", "أهلا", "مرحبا"]
     if profile.state == UserProfileState.COMPLETE and profile_exists and message.lower() in greeting_triggers:
         db_prof = _fetch_profile_from_db(str(user_uuid))
         name_hint = "ضيفنا الكريم"  # fallback
@@ -349,8 +318,6 @@ def chat_with_mona(user_input: UserMessage, request: Request):
             # Fallback to OpenAI directly with conversation history
             from agent import MORVO_SYSTEM_PROMPT
             response = answer_with_openai(message, system_text=MORVO_SYSTEM_PROMPT, history=history)
-        if needs_onboarding and not (is_greeting or wants_onb):
-            response = (response or "").strip() + "\n\nملاحظة: ما تعرّفنا عليك بعد. إذا حاب نجهّز التجربة حسب نشاطك، اكتب: ابدأ"
     except Exception as e:  # Map specific OpenAI-related errors to clearer HTTP codes/messages
         # Normalize OpenAI exception classes across SDK versions
         oai_error_mod = getattr(openai, "error", None)
