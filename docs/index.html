@@ -147,12 +147,15 @@
         }
         
         .onboarding-form { 
-            padding: 20px; 
             background: white; 
-            border-top: 1px solid #eee; 
+            border: 1px solid #e0e0e0; 
+            border-radius: 8px; 
+            margin: 10px 0; 
+            overflow: hidden; 
         }
         .form-step { 
             display: none; 
+            padding: 20px; 
         }
         .form-step.active { 
             display: block; 
@@ -220,18 +223,14 @@
     <div class="container">
         <div class="header">
             <h1>MORVO - المساعد التسويقي الذكي</h1>
-            <p>أدخل رابط API الخاص بك وابدأ المحادثة</p>
+            <p>ابدأ المحادثة مباشرة مع المساعد التسويقي الذكي</p>
         </div>
         
         <div class="config-section">
             <div class="config-row">
                 <div class="config-group">
                     <label for="apiBase">رابط API Base</label>
-                    <input id="apiBase" placeholder="https://your-backend.up.railway.app" />
-                </div>
-                <div class="config-group">
-                    <label for="userId">معرف المستخدم</label>
-                    <input id="userId" value="user_demo_1" />
+                    <input id="apiBase" value="https://monaagent-production-123a.up.railway.app" placeholder="https://your-backend.up.railway.app" />
                 </div>
                 <button id="startOnb" class="btn btn-primary">بدء التعارف</button>
             </div>
@@ -253,104 +252,12 @@
                 <button id="sendBtn">إرسال</button>
             </div>
         </div>
-        
-        <div class="onboarding-form hidden" id="onboardingForm">
-            <div class="form-step active" id="step1">
-                <h3>الخطوة الأولى: معلومات أساسية</h3>
-                <div class="form-group">
-                    <label for="userName">الاسم الأول</label>
-                    <input id="userName" placeholder="أدخل اسمك الأول" />
-                </div>
-                <div class="form-group">
-                    <label for="userRole">الدور الوظيفي</label>
-                    <select id="userRole">
-                        <option value="">اختر دورك</option>
-                        <option value="مدير/ة تسويق">مدير/ة تسويق</option>
-                        <option value="مختص/ة تسويق">مختص/ة تسويق</option>
-                        <option value="مالك/ـة مشروع">مالك/ـة مشروع</option>
-                        <option value="رائد/ة أعمال">رائد/ة أعمال</option>
-                        <option value="مدير/ة عام">مدير/ة عام</option>
-                        <option value="أخرى">أخرى</option>
-                    </select>
-                </div>
-                <div class="form-buttons">
-                    <button class="btn btn-secondary" onclick="nextStep()">التالي</button>
-                </div>
-            </div>
-            
-            <div class="form-step" id="step2">
-                <h3>الخطوة الثانية: معلومات الشركة</h3>
-                <div class="form-group">
-                    <label for="industry">نشاط الشركة</label>
-                    <input id="industry" placeholder="مثال: تجارة إلكترونية، مطاعم، تعليم..." />
-                </div>
-                <div class="form-group">
-                    <label for="companySize">حجم الشركة</label>
-                    <select id="companySize">
-                        <option value="">اختر الحجم</option>
-                        <option value="👤 شخص واحد (فريلانسر)">👤 شخص واحد (فريلانسر)</option>
-                        <option value="👥 2–10 موظفين">👥 2–10 موظفين</option>
-                        <option value="🏢 11–50 موظف">🏢 11–50 موظف</option>
-                        <option value="🏗 51+ موظف">🏗 51+ موظف</option>
-                    </select>
-                </div>
-                <div class="form-buttons">
-                    <button class="btn btn-secondary" onclick="prevStep()">السابق</button>
-                    <button class="btn btn-primary" onclick="nextStep()">التالي</button>
-                </div>
-            </div>
-            
-            <div class="form-step" id="step3">
-                <h3>الخطوة الثالثة: الموقع الإلكتروني</h3>
-                <div class="form-group">
-                    <label for="websiteStatus">هل لديك موقع إلكتروني؟</label>
-                    <select id="websiteStatus">
-                        <option value="">اختر الحالة</option>
-                        <option value="✅ نعم – شغّال">✅ نعم – شغّال</option>
-                        <option value="🔧 نعم – يحتاج تطوير">🔧 نعم – يحتاج تطوير</option>
-                        <option value="🏗 تحت الإنشاء">🏗 تحت الإنشاء</option>
-                        <option value="❌ لا">❌ لا</option>
-                    </select>
-                </div>
-                <div class="form-group" id="websiteUrlGroup" style="display: none;">
-                    <label for="websiteUrl">رابط الموقع</label>
-                    <input id="websiteUrl" placeholder="https://example.com" />
-                </div>
-                <div class="form-buttons">
-                    <button class="btn btn-secondary" onclick="prevStep()">السابق</button>
-                    <button class="btn btn-primary" onclick="nextStep()">التالي</button>
-                </div>
-            </div>
-            
-            <div class="form-step" id="step4">
-                <h3>الخطوة الرابعة: الأهداف والميزانية</h3>
-                <div class="form-group">
-                    <label for="goals">الأهداف التسويقية الرئيسية</label>
-                    <textarea id="goals" placeholder="اكتب أهدافك مفصولة بفواصل، مثال: زيادة الوعي، تحسين التحويلات، ترتيب SEO..."></textarea>
-                </div>
-                <div class="form-group">
-                    <label for="budget">الميزانية الشهرية للتسويق</label>
-                    <select id="budget">
-                        <option value="">اختر الميزانية</option>
-                        <option value="أقل من 5,000 ريال">أقل من 5,000 ريال</option>
-                        <option value="5,000–15,000 ريال">5,000–15,000 ريال</option>
-                        <option value="15,000–50,000 ريال">15,000–50,000 ريال</option>
-                        <option value="أكثر من 50,000 ريال">أكثر من 50,000 ريال</option>
-                        <option value="حسب المشروع">حسب المشروع</option>
-                        <option value="مو محددة">مو محددة</option>
-                    </select>
-                </div>
-                <div class="form-buttons">
-                    <button class="btn btn-secondary" onclick="prevStep()">السابق</button>
-                    <button class="btn btn-primary" onclick="completeOnboarding()">إكمال التعارف</button>
-                </div>
-            </div>
-        </div>
     </div>
 
     <script>
         let currentStep = 1;
         let onboardingData = {};
+        let currentUserId = 'user_' + Date.now(); // Generate unique user ID
         
         const $ = (id) => document.getElementById(id);
         
@@ -360,7 +267,7 @@
             status.textContent = message;
         }
         
-        function addMessage(content, isUser = false) {
+        function addMessage(content, isUser = false, showForm = false) {
             const messages = $('chatMessages');
             const messageDiv = document.createElement('div');
             messageDiv.className = `message ${isUser ? 'user' : 'assistant'}`;
@@ -376,6 +283,126 @@
             messageDiv.appendChild(avatar);
             messageDiv.appendChild(contentDiv);
             messages.appendChild(messageDiv);
+            
+            // Add onboarding form if requested
+            if (showForm) {
+                const formDiv = document.createElement('div');
+                formDiv.className = 'message assistant';
+                formDiv.innerHTML = `
+                    <div class="message-avatar">م</div>
+                    <div class="message-content">
+                        <div class="onboarding-form">
+                            <div class="form-step active" id="step1">
+                                <h4>الخطوة الأولى: معلومات أساسية</h4>
+                                <div class="form-group">
+                                    <label for="userName">الاسم الأول</label>
+                                    <input id="userName" placeholder="أدخل اسمك الأول" />
+                                </div>
+                                <div class="form-group">
+                                    <label for="userRole">الدور الوظيفي</label>
+                                    <select id="userRole">
+                                        <option value="">اختر دورك</option>
+                                        <option value="مدير/ة تسويق">مدير/ة تسويق</option>
+                                        <option value="مختص/ة تسويق">مختص/ة تسويق</option>
+                                        <option value="مالك/ـة مشروع">مالك/ـة مشروع</option>
+                                        <option value="رائد/ة أعمال">رائد/ة أعمال</option>
+                                        <option value="مدير/ة عام">مدير/ة عام</option>
+                                        <option value="أخرى">أخرى</option>
+                                    </select>
+                                </div>
+                                <div class="form-buttons">
+                                    <button class="btn btn-secondary" onclick="nextStep()">التالي</button>
+                                </div>
+                            </div>
+                            
+                            <div class="form-step" id="step2">
+                                <h4>الخطوة الثانية: معلومات الشركة</h4>
+                                <div class="form-group">
+                                    <label for="industry">نشاط الشركة</label>
+                                    <input id="industry" placeholder="مثال: تجارة إلكترونية، مطاعم، تعليم..." />
+                                </div>
+                                <div class="form-group">
+                                    <label for="companySize">حجم الشركة</label>
+                                    <select id="companySize">
+                                        <option value="">اختر الحجم</option>
+                                        <option value="👤 شخص واحد (فريلانسر)">👤 شخص واحد (فريلانسر)</option>
+                                        <option value="👥 2–10 موظفين">👥 2–10 موظفين</option>
+                                        <option value="🏢 11–50 موظف">🏢 11–50 موظف</option>
+                                        <option value="🏗 51+ موظف">🏗 51+ موظف</option>
+                                    </select>
+                                </div>
+                                <div class="form-buttons">
+                                    <button class="btn btn-secondary" onclick="prevStep()">السابق</button>
+                                    <button class="btn btn-primary" onclick="nextStep()">التالي</button>
+                                </div>
+                            </div>
+                            
+                            <div class="form-step" id="step3">
+                                <h4>الخطوة الثالثة: الموقع الإلكتروني</h4>
+                                <div class="form-group">
+                                    <label for="websiteStatus">هل لديك موقع إلكتروني؟</label>
+                                    <select id="websiteStatus">
+                                        <option value="">اختر الحالة</option>
+                                        <option value="✅ نعم – شغّال">✅ نعم – شغّال</option>
+                                        <option value="🔧 نعم – يحتاج تطوير">🔧 نعم – يحتاج تطوير</option>
+                                        <option value="🏗 تحت الإنشاء">🏗 تحت الإنشاء</option>
+                                        <option value="❌ لا">❌ لا</option>
+                                    </select>
+                                </div>
+                                <div class="form-group" id="websiteUrlGroup" style="display: none;">
+                                    <label for="websiteUrl">رابط الموقع</label>
+                                    <input id="websiteUrl" placeholder="https://example.com" />
+                                </div>
+                                <div class="form-buttons">
+                                    <button class="btn btn-secondary" onclick="prevStep()">السابق</button>
+                                    <button class="btn btn-primary" onclick="nextStep()">التالي</button>
+                                </div>
+                            </div>
+                            
+                            <div class="form-step" id="step4">
+                                <h4>الخطوة الرابعة: الأهداف والميزانية</h4>
+                                <div class="form-group">
+                                    <label for="goals">الأهداف التسويقية الرئيسية</label>
+                                    <textarea id="goals" placeholder="اكتب أهدافك مفصولة بفواصل، مثال: زيادة الوعي، تحسين التحويلات، ترتيب SEO..."></textarea>
+                                </div>
+                                <div class="form-group">
+                                    <label for="budget">الميزانية الشهرية للتسويق</label>
+                                    <select id="budget">
+                                        <option value="">اختر الميزانية</option>
+                                        <option value="أقل من 5,000 ريال">أقل من 5,000 ريال</option>
+                                        <option value="5,000–15,000 ريال">5,000–15,000 ريال</option>
+                                        <option value="15,000–50,000 ريال">15,000–50,000 ريال</option>
+                                        <option value="أكثر من 50,000 ريال">أكثر من 50,000 ريال</option>
+                                        <option value="حسب المشروع">حسب المشروع</option>
+                                        <option value="مو محددة">مو محددة</option>
+                                    </select>
+                                </div>
+                                <div class="form-buttons">
+                                    <button class="btn btn-secondary" onclick="prevStep()">السابق</button>
+                                    <button class="btn btn-primary" onclick="completeOnboarding()">إكمال التعارف</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                messages.appendChild(formDiv);
+                
+                // Add event listener for website status change
+                setTimeout(() => {
+                    const websiteStatus = document.getElementById('websiteStatus');
+                    if (websiteStatus) {
+                        websiteStatus.addEventListener('change', function() {
+                            const urlGroup = document.getElementById('websiteUrlGroup');
+                            if (this.value.includes("نعم")) {
+                                urlGroup.style.display = "block";
+                            } else {
+                                urlGroup.style.display = "none";
+                            }
+                        });
+                    }
+                }, 100);
+            }
+            
             messages.scrollTop = messages.scrollHeight;
         }
         
@@ -385,10 +412,9 @@
         
         async function startOnboarding() {
             const base = apiBase();
-            const user_id = $("userId").value.trim();
             
-            if (!base || !user_id) {
-                showStatus("تأكد من تعبئة رابط الـ API ومعرّف المستخدم", "error");
+            if (!base) {
+                showStatus("تأكد من تعبئة رابط الـ API", "error");
                 return;
             }
             
@@ -398,15 +424,14 @@
                 const response = await fetch(`${base}/onboarding/start`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ user_id })
+                    body: JSON.stringify({ user_id: currentUserId })
                 });
                 
                 const data = await response.json();
                 
                 if (response.ok) {
                     showStatus("تم بدء التعارف بنجاح", "success");
-                    addMessage("حياك الله! أنا MORVO 🤝 مستشارتك الذكية للتسويق. خلّينا نبدأ بالتعارف...", false);
-                    showOnboardingForm();
+                    addMessage("حياك الله! أنا MORVO 🤝 مستشارتك الذكية للتسويق. خلّينا نبدأ بالتعارف...", false, true);
                 } else {
                     showStatus(`خطأ: ${data.detail || 'فشل في بدء التعارف'}`, "error");
                 }
@@ -415,19 +440,12 @@
             }
         }
         
-        function showOnboardingForm() {
-            $('onboardingForm').classList.remove('hidden');
-            $('chatInput').classList.add('hidden');
-        }
-        
-        function hideOnboardingForm() {
-            $('onboardingForm').classList.add('hidden');
-            $('chatInput').classList.remove('hidden');
-        }
-        
         function showStep(step) {
             document.querySelectorAll('.form-step').forEach(s => s.classList.remove('active'));
-            $(`step${step}`).classList.add('active');
+            const stepElement = document.getElementById(`step${step}`);
+            if (stepElement) {
+                stepElement.classList.add('active');
+            }
             currentStep = step;
         }
         
@@ -446,14 +464,14 @@
         async function completeOnboarding() {
             // Collect all form data
             onboardingData = {
-                userName: $('userName').value,
-                userRole: $('userRole').value,
-                industry: $('industry').value,
-                companySize: $('companySize').value,
-                websiteStatus: $('websiteStatus').value,
-                websiteUrl: $('websiteUrl').value,
-                goals: $('goals').value,
-                budget: $('budget').value
+                userName: document.getElementById('userName')?.value || '',
+                userRole: document.getElementById('userRole')?.value || '',
+                industry: document.getElementById('industry')?.value || '',
+                companySize: document.getElementById('companySize')?.value || '',
+                websiteStatus: document.getElementById('websiteStatus')?.value || '',
+                websiteUrl: document.getElementById('websiteUrl')?.value || '',
+                goals: document.getElementById('goals')?.value || '',
+                budget: document.getElementById('budget')?.value || ''
             };
             
             // Validate required fields
@@ -466,7 +484,6 @@
             
             try {
                 const base = apiBase();
-                const user_id = $("userId").value.trim();
                 
                 // Send onboarding data step by step
                 const steps = [
@@ -485,7 +502,7 @@
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({ 
-                            user_id, 
+                            user_id: currentUserId, 
                             value: steps[i] 
                         })
                     });
@@ -495,14 +512,12 @@
                     if (response.ok && data.done) {
                         showStatus("تم إكمال التعارف بنجاح!", "success");
                         addMessage("تم حفظ بياناتك ✅ كيف أقدر أساعدك اليوم؟", false);
-                        hideOnboardingForm();
                         return;
                     }
                 }
                 
                 showStatus("تم حفظ البيانات بنجاح", "success");
                 addMessage("تم حفظ بياناتك ✅ كيف أقدر أساعدك اليوم؟", false);
-                hideOnboardingForm();
                 
             } catch (error) {
                 showStatus("خطأ في حفظ البيانات", "error");
@@ -511,10 +526,9 @@
         
         async function sendMessage() {
             const base = apiBase();
-            const user_id = $("userId").value.trim();
             const message = $("messageInput").value.trim();
             
-            if (!base || !user_id || !message) return;
+            if (!base || !message) return;
             
             addMessage(message, true);
             $("messageInput").value = "";
@@ -523,7 +537,7 @@
                 const response = await fetch(`${base}/chat`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ user_id, message })
+                    body: JSON.stringify({ user_id: currentUserId, message })
                 });
                 
                 const data = await response.json();
@@ -542,15 +556,10 @@
             if (e.key === "Enter") sendMessage();
         });
         
-        // Website URL visibility toggle
-        $("websiteStatus").addEventListener("change", function() {
-            const urlGroup = $("websiteUrlGroup");
-            if (this.value.includes("نعم")) {
-                urlGroup.style.display = "block";
-            } else {
-                urlGroup.style.display = "none";
-            }
-        });
+        // Make functions globally available for onclick handlers
+        window.nextStep = nextStep;
+        window.prevStep = prevStep;
+        window.completeOnboarding = completeOnboarding;
     </script>
 </body>
 </html>
