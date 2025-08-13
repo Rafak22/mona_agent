@@ -286,6 +286,8 @@ def chat_with_mona(user_input: UserMessage, request: Request):
             if conversation_id:
                 log_turn_via_rpc(user_uuid, conversation_id, profile, {}, "onboarding", "user", message)
                 log_turn_via_rpc(user_uuid, conversation_id, profile, {}, "onboarding", "assistant", reply)
+            # Important: if the system asked the role question next, do not treat the name-like input as name automatically.
+            # We rely on graph validation and keep onboarding going. FE will show the next prompt (likely role).
             return {"reply": reply}
 
     # 3) Strict onboarding-first for brand new users who are not starting it yet

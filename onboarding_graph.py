@@ -209,13 +209,8 @@ _builder.add_node("budget", n_budget)
 _builder.add_node("save", n_save_and_finish)
 
 _builder.add_edge(START, "intro_name")
-_builder.add_edge("intro_name", "preferred_choice")
-
-def _branch_preferred(state: OBState) -> str:
-    return "preferred_input" if state.get("preferred_choice") == "أفضّل اسم مختلف" else "role"
-
-_builder.add_conditional_edges("preferred_choice", _branch_preferred, ["preferred_input", "role"])
-_builder.add_edge("preferred_input", "role")
+# Simplify: go straight from name to role (skip preferred name question)
+_builder.add_edge("intro_name", "role")
 _builder.add_edge("role", "industry")
 _builder.add_edge("industry", "company_size")
 _builder.add_edge("company_size", "website_status")
