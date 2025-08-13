@@ -121,6 +121,16 @@ def _wants_onboarding(text: str) -> bool:
     triggers = ("ابدأ", "ابدا", "بدء", "تعريف", "سجل", "onboard", "onboarding", "start")
     return any(x in t for x in triggers)
 
+# Heuristic: looks like a first name in Arabic or Latin letters
+import re
+_AR = re.compile(r"^[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\s\-']{2,40}$")
+_LAT = re.compile(r"^[A-Za-z\s\-']{2,40}$")
+def _looks_like_name(text: str) -> bool:
+    t = (text or "").strip()
+    if not t:
+        return False
+    return bool(_AR.match(t) or _LAT.match(t))
+
 @app.get("/")
 def read_root():
     return {"message": "👋 MORVO is ready to analyze Almarai data!"}
@@ -256,6 +266,29 @@ def chat_with_mona(user_input: UserMessage, request: Request):
     is_q = _is_question(message)
 
     # Strict onboarding-first mode for new users (frontend handles the flow)
+    # 1) If the user already has a saved profile → allow immediate chat
+    if profile_exists and profile.state == UserProfileState.COMPLETE:
+        pass  # proceed to chat logic
+
+    # 2) If user does not have a profile row yet, but they just typed a likely first name,
+    #    start onboarding implicitly by forwarding the input as the first step
+    elif not profile_exists and _looks_like_name(message):
+        ob_step = resume_onboarding(user_input.user_id, message)
+        if ob_step.get("done"):
+            profile.state = UserProfileState.COMPLETE
+            update_user_profile(user_input.user_id, profile)
+            # Continue to chat after quick onboarding
+        else:
+            ui = ob_step.get("ui") or {}
+            reply = ui.get("message") or "…"
+            save_message_to_db(user_input.user_id, "user", message)
+            save_message_to_db(user_input.user_id, "assistant", reply)
+            if conversation_id:
+                log_turn_via_rpc(user_uuid, conversation_id, profile, {}, "onboarding", "user", message)
+                log_turn_via_rpc(user_uuid, conversation_id, profile, {}, "onboarding", "assistant", reply)
+            return {"reply": reply}
+
+    # 3) Strict onboarding-first for brand new users who are not starting it yet
     if not profile_exists and not wants_onb:
         reply = (
             "مرحباً بك في مورفو! قبل ما نبدأ بالإجابات، خلّينا نجهّز ملفك التسويقي بسرعة. "
@@ -265,7 +298,7 @@ def chat_with_mona(user_input: UserMessage, request: Request):
         save_message_to_db(user_input.user_id, "assistant", reply)
         if conversation_id:
             log_turn_via_rpc(user_uuid, conversation_id, profile, {}, "onboarding_required", "assistant", reply)
-        return {"reply": reply}
+        return {"reply": reply, "onboarding_required": True}
 
     if needs_onboarding and (is_greeting or wants_onb) and not is_q:
         WELCOME_TEXT = (
@@ -277,7 +310,7 @@ def chat_with_mona(user_input: UserMessage, request: Request):
             # Start flow
             ob = start_onboarding(user_input.user_id)
             # mark as in-progress
-            profile.state = UserProfileState.ASK_NAMEimage.png 
+            profile.state = UserProfileState.ASK_NAME
             update_user_profile(user_input.user_id, profile)
             ui = ob.get("ui") or {}
             reply = ui.get("message") or WELCOME_TEXT
@@ -289,7 +322,17 @@ def chat_with_mona(user_input: UserMessage, request: Request):
             if step.get("done"):
                 profile.state = UserProfileState.COMPLETE
                 update_user_profile(user_input.user_id, profile)
-                reply = "تم حفظ بياناتك ✅ كيف أقدر أساعدك اليوم؟"
+                # Auto-continue to chat if user appears to have provided a name already
+                if _looks_like_name(message):
+                    # Allow FE to jump straight to chat UI
+                    save_message_to_db(user_input.user_id, "user", message)
+                    reply = "تم حفظ بياناتك ✅ كيف أقدر أساعدك اليوم؟"
+                    save_message_to_db(user_input.user_id, "assistant", reply)
+                    if conversation_id:
+                        log_turn_via_rpc(user_uuid, conversation_id, profile, {}, "onboarding_complete", "assistant", reply)
+                    return {"reply": reply}
+                else:
+                    reply = "تم حفظ بياناتك ✅ كيف أقدر أساعدك اليوم؟"
             else:
                 ui = step.get("ui") or {}
                 reply = ui.get("message") or WELCOME_TEXT
@@ -303,22 +346,6 @@ def chat_with_mona(user_input: UserMessage, request: Request):
             log_turn_via_rpc(user_uuid, conversation_id, profile, {}, "onboarding", "user", message)
             log_turn_via_rpc(user_uuid, conversation_id, profile, {}, "onboarding", "assistant", reply)
         logging.info(f"[chat:onboarding] origin={request.headers.get('origin','')} user_id={user_input.user_id} msg={message[:60]} reply={(reply or '')[:60]}...")
-        return {"reply": reply}
-        # Save user message to DB
-        save_message_to_db(user_input.user_id, "user", message)
-        reply = (
-            "أهلاً! أنا **MORVO** — وكيلتك التسويقية الذكية المتخصصة في تحليل بيانات المراعي.\n\n"
-            "🔍 أقدر أساعدك في:\n"
-            "• تحليل ذكر العلامة التجارية وسمعتها\n"
-            "• متابعة أداء المنشورات على وسائل التواصل\n"
-            "• تحليل أداء SEO والكلمات المفتاحية\n\n"
-            "💡 من وين تحب نبدأ اليوم؟"
-        )
-        # Save assistant reply to DB
-        save_message_to_db(user_input.user_id, "assistant", reply)
-        if conversation_id:
-            log_turn_via_rpc(user_uuid, conversation_id, profile, {}, "greeting", "user", message)
-            log_turn_via_rpc(user_uuid, conversation_id, profile, {}, "greeting", "assistant", reply)
         return {"reply": reply}
 
     # If profile exists and is complete, greet returning user once
@@ -346,9 +373,25 @@ def chat_with_mona(user_input: UserMessage, request: Request):
         if java_response:
             response = java_response
         else:
-            # Fallback to OpenAI directly with conversation history
+            # Fallback to OpenAI directly with conversation history and profile context
             from agent import MORVO_SYSTEM_PROMPT
-            response = answer_with_openai(message, system_text=MORVO_SYSTEM_PROMPT, history=history)
+            db_prof = _fetch_profile_from_db(str(user_uuid))
+            prof_txt = ""
+            if db_prof:
+                # Compact profile context to guide the model without exposing raw field names
+                parts = []
+                if db_prof.get("user_role"): parts.append(f"role: {db_prof['user_role']}")
+                if db_prof.get("industry"): parts.append(f"industry: {db_prof['industry']}")
+                if db_prof.get("company_size"): parts.append(f"company_size: {db_prof['company_size']}")
+                if db_prof.get("website_status"): parts.append(f"website: {db_prof['website_status']}")
+                if db_prof.get("website_url"): parts.append(f"url: {db_prof['website_url']}")
+                goals = db_prof.get("primary_goals")
+                if isinstance(goals, list) and goals:
+                    parts.append("goals: " + ", ".join([str(g) for g in goals][:5]))
+                if db_prof.get("budget_range"): parts.append(f"budget: {db_prof['budget_range']}")
+                prof_txt = "\nUser profile → " + "; ".join(parts)
+            system_prompt = MORVO_SYSTEM_PROMPT + prof_txt
+            response = answer_with_openai(message, system_text=system_prompt, history=history)
         if needs_onboarding and not (is_greeting or wants_onb):
             response = (response or "").strip() + "\n\nملاحظة: ما تعرّفنا عليك بعد. إذا حاب نجهّز التجربة حسب نشاطك، اكتب: ابدأ"
     except Exception as e:  # Map specific OpenAI-related errors to clearer HTTP codes/messages
