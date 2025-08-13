@@ -63,6 +63,18 @@ def save_message_to_db(user_id: str, role: str, content: str) -> bool:
         logging.error(f"Error saving message to DB: {e}")
         return False
 
+def _fetch_profile_from_db(user_uuid_str: str) -> Optional[Dict[str, str]]:
+    if not _sb:
+        return None
+    try:
+        res = _sb.table("profiles").select("user_role,industry,company_size,website_status,website_url,primary_goals,budget_range") \
+            .eq("user_id", user_uuid_str).limit(1).execute()
+        if res.data:
+            return res.data[0]
+    except Exception as e:
+        logging.info(f"[chat] fetch profile failed: {e}")
+    return None
+
 app = FastAPI()
 
 # Expanded CORS to support Lovable subdomains and local development
@@ -102,6 +114,10 @@ class OpenAIChatRequest(BaseModel):
     prompt: str
     system: Optional[str] = None
     history: Optional[List[Dict[str, str]]] = None
+
+class ResetRequest(BaseModel):
+    user_id: str
+    mode: Optional[str] = "conversation"  # "conversation" | "all"
 
 @app.post("/onboarding/start")
 def onboarding_start(event: OBStartReq):
@@ -214,8 +230,8 @@ def chat_with_mona(user_input: UserMessage, request: Request):
 
     if (profile.state != UserProfileState.COMPLETE) or (not profile_exists) or (message.lower() in greeting_triggers):
         WELCOME_TEXT = (
-            "حياك الله! أنا MORVO، مستشارتك الذكية للتسويق. أقدر أساعدك في تحليل السمعة والمنشورات وSEO."
-            " خلّينا نبدأ بالتعارف… وش اسمك الأول؟"
+            "حياك الله! أنا MORVO 🤝 مستشارتك الذكية للتسويق. أساعدك في تحليل السمعة والمنشورات وSEO،"
+            " ونبني خطط تحقق عائد واضح. خلّينا نبدأ بالتعارف… وش اسمك الأول؟"
         )
         # If onboarding not started in this session, start; otherwise resume with provided message
         if profile.state == UserProfileState.COMPLETE:
@@ -232,7 +248,7 @@ def chat_with_mona(user_input: UserMessage, request: Request):
             if step.get("done"):
                 profile.state = UserProfileState.COMPLETE
                 update_user_profile(user_input.user_id, profile)
-                reply = "تم حفظ بياناتك. كيف أقدر أساعدك اليوم؟"
+                reply = "تم حفظ بياناتك ✅ كيف أقدر أساعدك اليوم؟"
             else:
                 ui = step.get("ui") or {}
                 reply = ui.get("message") or WELCOME_TEXT
@@ -260,6 +276,19 @@ def chat_with_mona(user_input: UserMessage, request: Request):
         if conversation_id:
             log_turn_via_rpc(user_uuid, conversation_id, profile, {}, "greeting", "user", message)
             log_turn_via_rpc(user_uuid, conversation_id, profile, {}, "greeting", "assistant", reply)
+        return {"reply": reply}
+
+    # If profile exists and is complete, greet returning user once
+    if profile.state == UserProfileState.COMPLETE and profile_exists and message.lower() in greeting_triggers:
+        db_prof = _fetch_profile_from_db(str(user_uuid))
+        name_hint = "ضيفنا الكريم"  # fallback
+        if db_prof and isinstance(db_prof.get("primary_goals"), list) and db_prof.get("primary_goals"):
+            name_hint = "ضيفنا الكريم"
+        reply = "أهلاً برجعتك! أنا MORVO 🤝 جاهز أساعدك. وش حاب نبدأ فيه اليوم؟"
+        save_message_to_db(user_input.user_id, "user", message)
+        save_message_to_db(user_input.user_id, "assistant", reply)
+        if conversation_id:
+            log_turn_via_rpc(user_uuid, conversation_id, profile, {}, "welcome_back", "assistant", reply)
         return {"reply": reply}
 
     # Get conversation history from Supabase
@@ -358,3 +387,18 @@ def openai_chat(req: OpenAIChatRequest):
         if (RateErr and isinstance(e, RateErr)):
             raise HTTPException(status_code=429, detail="OpenAI API rate limit exceeded.")
         raise HTTPException(status_code=502, detail=f"OpenAI error: {e}")
+
+@app.post("/reset")
+def reset(req: ResetRequest):
+    # Clear conversation history always
+    cleared = clear_conversation_history(req.user_id)
+    # Optionally clear profile row and in-memory state
+    if req.mode == "all":
+        try:
+            users[req.user_id] = UserProfile()  # reset in-memory
+            if _sb:
+                uid = str(to_uuid(req.user_id))
+                _sb.table("profiles").delete().eq("user_id", uid).execute()
+        except Exception as e:
+            logging.info(f"[reset] profile clear skipped: {e}")
+    return {"cleared": bool(cleared), "mode": req.mode}
