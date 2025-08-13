@@ -242,6 +242,8 @@ def chat_with_mona(user_input: UserMessage, request: Request):
             update_user_profile(user_input.user_id, profile)
             ui = ob.get("ui") or {}
             reply = ui.get("message") or WELCOME_TEXT
+            if not reply:
+                reply = WELCOME_TEXT
         else:
             # Resume flow with the user's message
             step = resume_onboarding(user_input.user_id, message)
@@ -252,6 +254,8 @@ def chat_with_mona(user_input: UserMessage, request: Request):
             else:
                 ui = step.get("ui") or {}
                 reply = ui.get("message") or WELCOME_TEXT
+                if not reply:
+                    reply = WELCOME_TEXT
 
         # Save messages
         save_message_to_db(user_input.user_id, "user", message)
@@ -338,15 +342,31 @@ def chat_with_mona(user_input: UserMessage, request: Request):
 def onboarding_start_compat(event: OBStartReq):
     res = onboarding_start(event)
     ui = res.get("ui") or {}
-    return {"reply": ui.get("message") or ""}
+    msg = ui.get("message") or ""
+    if not msg:
+        msg = (
+            "حياك الله! أنا MORVO 🤝 مستشارتك الذكية للتسويق. أساعدك في تحليل السمعة والمنشورات وSEO،"
+            " ونبني خطط تحقق عائد واضح. خلّينا نبدأ بالتعارف… وش اسمك الأول؟"
+        )
+    logging.info(f"[onboarding_start_compat] user_id={event.user_id} reply_len={len(msg)}")
+    return {"reply": msg}
 
 @app.post("/onboarding/step_compat")
 def onboarding_step_compat(event: OBStepReq):
     res = onboarding_step(event)
     if res.get("done"):
-        return {"reply": "تم حفظ بياناتك. اسألني أي سؤال تسويقي الآن."}
+        msg_done = "تم حفظ بياناتك ✅ اسألني أي سؤال تسويقي الآن."
+        logging.info(f"[onboarding_step_compat] done user_id={event.user_id}")
+        return {"reply": msg_done}
     ui = res.get("ui") or {}
-    return {"reply": ui.get("message") or ""}
+    msg = ui.get("message") or ""
+    if not msg:
+        msg = (
+            "حياك الله! أنا MORVO 🤝 مستشارتك الذكية للتسويق. أساعدك في تحليل السمعة والمنشورات وSEO،"
+            " ونبني خطط تحقق عائد واضح. خلّينا نبدأ بالتعارف… وش اسمك الأول؟"
+        )
+    logging.info(f"[onboarding_step_compat] user_id={event.user_id} reply_len={len(msg)}")
+    return {"reply": msg}
 
 @app.get("/diag")
 def diag():
