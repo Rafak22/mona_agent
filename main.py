@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from schema import UserMessage, UserProfileState, UserProfile
 from memory_store import get_user_profile, update_user_profile, users, user_memory
 from tools.conversation_logger import to_uuid, get_or_create_conversation, log_turn_via_rpc
-from onboarding_graph import start_onboarding, resume_onboarding
+from simple_onboarding import start_onboarding, resume_onboarding
 from agent import run_agent, answer_with_openai, route_query
 from tools.supabase_client import supabase
 from dotenv import load_dotenv
@@ -265,6 +265,7 @@ def chat_with_mona(user_input: UserMessage, request: Request):
             uid = str(user_uuid)
             res = _sb.table("profiles").select("user_id").eq("user_id", uid).limit(1).execute()
             profile_exists = bool(res.data)
+            logging.info(f"[chat] profile_exists check: user_id={user_input.user_id} -> uuid={uid} -> exists={profile_exists}")
         except Exception as e:
             logging.info(f"[chat] profile_exists check skipped: {e}")
 
@@ -277,18 +278,26 @@ def chat_with_mona(user_input: UserMessage, request: Request):
     # Mandatory server-driven onboarding: if profile row missing OR in-memory state not COMPLETE,
     # start or resume onboarding and return the next prompt immediately (no chat fallthrough)
     if not profile_exists or profile.state != UserProfileState.COMPLETE:
+        logging.info(f"[chat] onboarding required: profile_exists={profile_exists}, state={profile.state}")
         # move to IN_ONBOARDING
         profile.state = UserProfileState.IN_ONBOARDING
         update_user_profile(user_input.user_id, profile)
         # decide whether to start or resume
         snap = start_onboarding(user_input.user_id) if is_greeting or wants_onb else resume_onboarding(user_input.user_id, message)
+        
+        # Check if onboarding is complete
+        if snap.get("done"):
+            profile.state = UserProfileState.COMPLETE
+            update_user_profile(user_input.user_id, profile)
+            logging.info(f"[chat] onboarding completed for user_id: {user_input.user_id}")
+        
         ui = snap.get("ui") or {}
         reply = ui.get("message") or "..."
         save_message_to_db(user_input.user_id, "user", message)
         save_message_to_db(user_input.user_id, "assistant", reply)
         if conversation_id:
             log_turn_via_rpc(user_uuid, conversation_id, profile, {}, "onboarding", "assistant", reply)
-        return {"reply": reply, "onboarding_required": True}
+        return {"reply": reply, "onboarding_required": not snap.get("done")}
 
     if needs_onboarding and (is_greeting or wants_onb) and not is_q:
         WELCOME_TEXT = (

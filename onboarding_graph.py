@@ -2,10 +2,9 @@
 from typing import TypedDict, Literal, Optional, List, Dict, Any
 from typing_extensions import NotRequired
 import os, re
-
 from langgraph.graph import StateGraph, START, END
 import uuid
-from langgraph.types import Command, interrupt
+from langgraph.types import Interrupt
 from langgraph.checkpoint.memory import InMemorySaver
 
 # ---------- Supabase (safe: if not configured, saving is skipped) ----------
@@ -54,13 +53,13 @@ class OBState(TypedDict, total=False):
 # ---------- Helpers ----------
 def ask_step(node: str, step: int, total: int, message: str,
              *, options: Optional[List[str]] = None,
-             ui_type: Literal["options","input"] = "input") -> Any:
+             ui_type: Literal["options","input"] = "input") -> Dict[str, Any]:
     payload: UIBlock = {"ui_type": ui_type, "message": message}
     if options:
         payload["options"] = options
     # Provide progress/state info for the FE
     payload["state_updates"] = {"node": node, "step": step, "total": total}
-    return interrupt(payload)
+    return {"ui": payload}
 
 _AR = re.compile(r"^[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\s\-']{2,40}$")
 _LAT = re.compile(r"^[A-Za-z\s\-']{2,40}$")
@@ -72,12 +71,17 @@ _NON_NAMES = {
 def _clean_name(s: str) -> Optional[str]:
     s = (s or "").strip()
     if not s:
+        print(f"[onboarding] name validation: empty input")
         return None
     low = s.lower()
     if low in _NON_NAMES:
+        print(f"[onboarding] name validation: blocked '{s}' (in _NON_NAMES)")
         return None
     if _AR.match(s) or _LAT.match(s):
-        return s if not s.isascii() else s.title()
+        result = s if not s.isascii() else s.title()
+        print(f"[onboarding] name validation: accepted '{s}' -> '{result}'")
+        return result
+    print(f"[onboarding] name validation: rejected '{s}' (no regex match)")
     return None
 
 _URL_RE = re.compile(r"^https?://[^\s/$.?#].[^\s]*$", re.IGNORECASE)
@@ -103,6 +107,7 @@ def _save_profile_to_db(state: OBState) -> None:
         payload["user_id"] = _to_uuid_str(state["user_id"])  # coerce to UUID
     try:
         _sb.table("profiles").upsert(payload, on_conflict="user_id").execute()
+        print(f"[onboarding] saved profile for {state.get('user_id')} -> {payload.get('user_id')}")
     except Exception as e:
         print(f"[supabase] upsert skipped: {e}")
 
@@ -117,12 +122,19 @@ def n_intro_name(state: OBState) -> Dict[str, Any]:
         "ووضع استراتيجيات تحقق عائد واضح.\n\n"
         "خلّينا نبدأ بالتعارف… وش اسمك الأول؟"
     )
-    while True:
-        val = ask_step("intro_name", 1, 8, msg, ui_type="input")
-        name = _clean_name(str(val))
+    # Check if we have a resume value (user input)
+    if "resume" in state:
+        raw_input = str(state["resume"])
+        name = _clean_name(raw_input)
+        print(f"[onboarding] name validation: input='{raw_input}' -> cleaned='{name}'")
         if name:
             return {"user_name": name}
-        msg = "اسم غير واضح. اكتب اسمك الأول فقط (مثال: سارة، محمد، Laila). تجنب كلمات مثل: ايه، نعم، اوكي."
+        # Invalid name, ask again
+        error_msg = "اسم غير واضح. اكتب اسمك الأول فقط (مثال: سارة، محمد، Laila). تجنب كلمات مثل: ايه، نعم، اوكي."
+        return ask_step("intro_name", 1, 8, error_msg, ui_type="input")
+    
+    # First time, show initial message
+    return ask_step("intro_name", 1, 8, msg, ui_type="input")
 
 def n_preferred_choice(state: OBState) -> Dict[str, Any]:
     nm = state.get("user_name", "")
@@ -171,14 +183,19 @@ def n_website_status(state: OBState) -> Dict[str, Any]:
 
 def n_website_url(state: OBState) -> Dict[str, Any]:
     msg = "أرسل رابط الموقع (https://…)"
-    while True:
-        val = ask_step("website_url", 6, 8, msg, ui_type="input")
-        url = _clean_url(str(val))
+    # Check if we have a resume value (user input)
+    if "resume" in state:
+        url = _clean_url(str(state["resume"]))
         if url:
             prof = state.get("profile", {})
             prof["website_url"] = url
             return {"profile": prof}
-        msg = "الرابط غير صالح. مثال: https://example.com"
+        # Invalid URL, ask again
+        error_msg = "الرابط غير صالح. مثال: https://example.com"
+        return ask_step("website_url", 6, 8, error_msg, ui_type="input")
+    
+    # First time, show initial message
+    return ask_step("website_url", 6, 8, msg, ui_type="input")
 
 def n_goals(state: OBState) -> Dict[str, Any]:
     msg = "وش أهم أهدافك التسويقية؟ اكتبها مفصولة بفواصل (،). مثال: زيادة الوعي، تحسين التحويلات، ترتيب SEO…"
@@ -208,8 +225,6 @@ def n_save_and_finish(state: OBState) -> Dict[str, Any]:
 # ---------- Graph wiring ----------
 _builder = StateGraph(OBState)
 _builder.add_node("intro_name", n_intro_name)
-_builder.add_node("preferred_choice", n_preferred_choice)
-_builder.add_node("preferred_input", n_preferred_input)
 _builder.add_node("role", n_role)
 _builder.add_node("industry", n_industry)
 _builder.add_node("company_size", n_company_size)
@@ -220,7 +235,6 @@ _builder.add_node("budget", n_budget)
 _builder.add_node("save", n_save_and_finish)
 
 _builder.add_edge(START, "intro_name")
-# Simplify: go straight from name to role (skip preferred name question)
 _builder.add_edge("intro_name", "role")
 _builder.add_edge("role", "industry")
 _builder.add_edge("industry", "company_size")
@@ -256,12 +270,15 @@ def _current_ui(user_id: str) -> UIBlock:
 
 def start_onboarding(user_id: str) -> Dict[str, Any]:
     initial: OBState = {"user_id": user_id, "profile": {}}
+    print(f"[onboarding] starting for user_id: {user_id}")
     graph.invoke(initial, _cfg(user_id))  # runs until first interrupt
     return {"conversation_id": f"onb:{user_id}", "done": False, "ui": _current_ui(user_id)}
 
 def resume_onboarding(user_id: str, value: Any) -> Dict[str, Any]:
-    graph.invoke(Command(resume=value), _cfg(user_id))
+    print(f"[onboarding] resuming for user_id: {user_id} with value: {value}")
+    graph.invoke({"resume": value}, _cfg(user_id))
     snap = graph.get_state(_cfg(user_id))
     if snap.next is None:
+        print(f"[onboarding] completed for user_id: {user_id}")
         return {"conversation_id": f"onb:{user_id}", "done": True, "ui": None}
     return {"conversation_id": f"onb:{user_id}", "done": False, "ui": _current_ui(user_id)}
