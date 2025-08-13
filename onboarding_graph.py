@@ -52,19 +52,29 @@ class OBState(TypedDict, total=False):
     preferred_choice: Optional[str]
 
 # ---------- Helpers ----------
-def ask(message: str, *, options: Optional[List[str]] = None,
-        ui_type: Literal["options","input"] = "input") -> Any:
+def ask_step(node: str, step: int, total: int, message: str,
+             *, options: Optional[List[str]] = None,
+             ui_type: Literal["options","input"] = "input") -> Any:
     payload: UIBlock = {"ui_type": ui_type, "message": message}
     if options:
         payload["options"] = options
+    # Provide progress/state info for the FE
+    payload["state_updates"] = {"node": node, "step": step, "total": total}
     return interrupt(payload)
 
-_AR = re.compile(r"^[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\s\-']{1,40}$")
-_LAT = re.compile(r"^[A-Za-z\s\-']{1,40}$")
+_AR = re.compile(r"^[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\s\-']{2,40}$")
+_LAT = re.compile(r"^[A-Za-z\s\-']{2,40}$")
+_NON_NAMES = {
+    "ايه", "أيه", "ايوه", "أيوه", "نعم", "لا", "تمام", "طيب", "اوكي", "أوكي", "اوكيه",
+    "مرحبا", "اهلا", "أهلا", "هلا", "thanks", "thank you", "ok", "okay"
+}
 
 def _clean_name(s: str) -> Optional[str]:
     s = (s or "").strip()
     if not s:
+        return None
+    low = s.lower()
+    if low in _NON_NAMES:
         return None
     if _AR.match(s) or _LAT.match(s):
         return s if not s.isascii() else s.title()
@@ -108,11 +118,11 @@ def n_intro_name(state: OBState) -> Dict[str, Any]:
         "خلّينا نبدأ بالتعارف… وش اسمك الأول؟"
     )
     while True:
-        val = ask(msg, ui_type="input")
+        val = ask_step("intro_name", 1, 8, msg, ui_type="input")
         name = _clean_name(str(val))
         if name:
             return {"user_name": name}
-        msg = "اسم غير واضح. اكتب *اسمك الأول* فقط (عربي/English مقبول)."
+        msg = "اسم غير واضح. اكتب اسمك الأول فقط (مثال: سارة، محمد، Laila). تجنب كلمات مثل: ايه، نعم، اوكي."
 
 def n_preferred_choice(state: OBState) -> Dict[str, Any]:
     nm = state.get("user_name", "")
@@ -130,31 +140,31 @@ def n_preferred_input(state: OBState) -> Dict[str, Any]:
     return {"preferred_name": pn}
 
 def n_role(state: OBState) -> Dict[str, Any]:
-    val = ask("وش دورك في العمل؟",
-              options=["مدير/ة تسويق", "مختص/ة تسويق", "مالك/ـة مشروع", "رائد/ة أعمال", "مدير/ة عام", "أخرى"],
-              ui_type="options")
+    val = ask_step("role", 2, 8, "وش دورك في العمل؟",
+                   options=["مدير/ة تسويق", "مختص/ة تسويق", "مالك/ـة مشروع", "رائد/ة أعمال", "مدير/ة عام", "أخرى"],
+                   ui_type="options")
     prof = state.get("profile", {})
     prof["user_role"] = str(val)
     return {"profile": prof}
 
 def n_industry(state: OBState) -> Dict[str, Any]:
-    val = ask("نشاط شركتكم إيش؟ (مثال: تجارة إلكترونية، مطاعم، تعليم، تقنية…)", ui_type="input")
+    val = ask_step("industry", 3, 8, "نشاط شركتكم إيش؟ (مثال: تجارة إلكترونية، مطاعم، تعليم، تقنية…)", ui_type="input")
     prof = state.get("profile", {})
     prof["industry"] = str(val).strip()
     return {"profile": prof}
 
 def n_company_size(state: OBState) -> Dict[str, Any]:
-    val = ask("كم حجم الشركة؟",
-              options=["👤 شخص واحد (فريلانسر)", "👥 2–10 موظفين", "🏢 11–50 موظف", "🏗 51+ موظف"],
-              ui_type="options")
+    val = ask_step("company_size", 4, 8, "كم حجم الشركة؟",
+                   options=["👤 شخص واحد (فريلانسر)", "👥 2–10 موظفين", "🏢 11–50 موظف", "🏗 51+ موظف"],
+                   ui_type="options")
     prof = state.get("profile", {})
     prof["company_size"] = str(val)
     return {"profile": prof}
 
 def n_website_status(state: OBState) -> Dict[str, Any]:
-    val = ask("عندكم موقع إلكتروني؟",
-              options=["✅ نعم – شغّال", "🔧 نعم – يحتاج تطوير", "🏗 تحت الإنشاء", "❌ لا"],
-              ui_type="options")
+    val = ask_step("website_status", 5, 8, "عندكم موقع إلكتروني؟",
+                   options=["✅ نعم – شغّال", "🔧 نعم – يحتاج تطوير", "🏗 تحت الإنشاء", "❌ لا"],
+                   ui_type="options")
     prof = state.get("profile", {})
     prof["website_status"] = "Yes" if str(val).startswith("✅") or str(val).startswith("🔧") else "No"
     return {"profile": prof}
@@ -162,7 +172,7 @@ def n_website_status(state: OBState) -> Dict[str, Any]:
 def n_website_url(state: OBState) -> Dict[str, Any]:
     msg = "أرسل رابط الموقع (https://…)"
     while True:
-        val = ask(msg, ui_type="input")
+        val = ask_step("website_url", 6, 8, msg, ui_type="input")
         url = _clean_url(str(val))
         if url:
             prof = state.get("profile", {})
@@ -172,16 +182,16 @@ def n_website_url(state: OBState) -> Dict[str, Any]:
 
 def n_goals(state: OBState) -> Dict[str, Any]:
     msg = "وش أهم أهدافك التسويقية؟ اكتبها مفصولة بفواصل (،). مثال: زيادة الوعي، تحسين التحويلات، ترتيب SEO…"
-    val = ask(msg, ui_type="input")
+    val = ask_step("goals", 7, 8, msg, ui_type="input")
     items = [x.strip() for x in re.split(r"[،,]", str(val)) if x.strip()]
     prof = state.get("profile", {})
     prof["primary_goals"] = items or []
     return {"profile": prof}
 
 def n_budget(state: OBState) -> Dict[str, Any]:
-    val = ask("كم تقريباً ميزانيتكم الشهرية للتسويق؟",
-              options=["أقل من 5,000 ريال", "5,000–15,000 ريال", "15,000–50,000 ريال", "أكثر من 50,000 ريال", "حسب المشروع", "مو محددة"],
-              ui_type="options")
+    val = ask_step("budget", 8, 8, "كم تقريباً ميزانيتكم الشهرية للتسويق؟",
+                   options=["أقل من 5,000 ريال", "5,000–15,000 ريال", "15,000–50,000 ريال", "أكثر من 50,000 ريال", "حسب المشروع", "مو محددة"],
+                   ui_type="options")
     prof = state.get("profile", {})
     prof["budget_range"] = str(val)
     return {"profile": prof}
@@ -191,7 +201,8 @@ def n_save_and_finish(state: OBState) -> Dict[str, Any]:
     dn = _display_name(state)
     # final informational message (your FE can ignore; it's here for completeness)
     state["ui"] = {"ui_type": "input",
-                   "message": f"تم يا {dn}! ✅ الآن اسألني أي شيء في التسويق وبعطيك توصيات عملية."}
+                   "message": f"تم يا {dn}! ✅ الآن اسألني أي شيء في التسويق وبعطيك توصيات عملية.",
+                   "state_updates": {"node": "save", "step": 8, "total": 8}}
     return {}
 
 # ---------- Graph wiring ----------

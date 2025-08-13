@@ -125,9 +125,13 @@ def _wants_onboarding(text: str) -> bool:
 import re
 _AR = re.compile(r"^[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\s\-']{2,40}$")
 _LAT = re.compile(r"^[A-Za-z\s\-']{2,40}$")
+_NON_NAMES = {"ايه","أيه","ايوه","أيوه","نعم","لا","تمام","طيب","اوكي","أوكي","اوكيه","مرحبا","اهلا","أهلا","هلا","ok","okay","thanks","thank you"}
 def _looks_like_name(text: str) -> bool:
     t = (text or "").strip()
     if not t:
+        return False
+    low = t.lower()
+    if low in _NON_NAMES:
         return False
     return bool(_AR.match(t) or _LAT.match(t))
 
@@ -153,6 +157,10 @@ class ResetRequest(BaseModel):
 
 @app.post("/onboarding/start")
 def onboarding_start(event: OBStartReq):
+    # mark in-memory profile state
+    p = get_user_profile(event.user_id)
+    p.state = UserProfileState.IN_ONBOARDING
+    update_user_profile(event.user_id, p)
     result = start_onboarding(event.user_id)
     ui = result.get("ui", {}) or {}
     # normalize shape expected by FE
@@ -266,40 +274,20 @@ def chat_with_mona(user_input: UserMessage, request: Request):
     is_q = _is_question(message)
 
     # Strict onboarding-first mode for new users (frontend handles the flow)
-    # 1) If the user already has a saved profile → allow immediate chat
-    if profile_exists and profile.state == UserProfileState.COMPLETE:
-        pass  # proceed to chat logic
-
-    # 2) If user does not have a profile row yet, but they just typed a likely first name,
-    #    start onboarding implicitly by forwarding the input as the first step
-    elif not profile_exists and _looks_like_name(message):
-        ob_step = resume_onboarding(user_input.user_id, message)
-        if ob_step.get("done"):
-            profile.state = UserProfileState.COMPLETE
-            update_user_profile(user_input.user_id, profile)
-            # Continue to chat after quick onboarding
-        else:
-            ui = ob_step.get("ui") or {}
-            reply = ui.get("message") or "…"
-            save_message_to_db(user_input.user_id, "user", message)
-            save_message_to_db(user_input.user_id, "assistant", reply)
-            if conversation_id:
-                log_turn_via_rpc(user_uuid, conversation_id, profile, {}, "onboarding", "user", message)
-                log_turn_via_rpc(user_uuid, conversation_id, profile, {}, "onboarding", "assistant", reply)
-            # Important: if the system asked the role question next, do not treat the name-like input as name automatically.
-            # We rely on graph validation and keep onboarding going. FE will show the next prompt (likely role).
-            return {"reply": reply}
-
-    # 3) Strict onboarding-first for brand new users who are not starting it yet
-    if not profile_exists and not wants_onb:
-        reply = (
-            "مرحباً بك في مورفو! قبل ما نبدأ بالإجابات، خلّينا نجهّز ملفك التسويقي بسرعة. "
-            "اضغط على زر البدء في الواجهة أو أرسل كلمة: ابدأ"
-        )
+    # Mandatory server-driven onboarding: if profile row missing OR in-memory state not COMPLETE,
+    # start or resume onboarding and return the next prompt immediately (no chat fallthrough)
+    if not profile_exists or profile.state != UserProfileState.COMPLETE:
+        # move to IN_ONBOARDING
+        profile.state = UserProfileState.IN_ONBOARDING
+        update_user_profile(user_input.user_id, profile)
+        # decide whether to start or resume
+        snap = start_onboarding(user_input.user_id) if is_greeting or wants_onb else resume_onboarding(user_input.user_id, message)
+        ui = snap.get("ui") or {}
+        reply = ui.get("message") or "..."
         save_message_to_db(user_input.user_id, "user", message)
         save_message_to_db(user_input.user_id, "assistant", reply)
         if conversation_id:
-            log_turn_via_rpc(user_uuid, conversation_id, profile, {}, "onboarding_required", "assistant", reply)
+            log_turn_via_rpc(user_uuid, conversation_id, profile, {}, "onboarding", "assistant", reply)
         return {"reply": reply, "onboarding_required": True}
 
     if needs_onboarding and (is_greeting or wants_onb) and not is_q:
@@ -312,7 +300,7 @@ def chat_with_mona(user_input: UserMessage, request: Request):
             # Start flow
             ob = start_onboarding(user_input.user_id)
             # mark as in-progress
-            profile.state = UserProfileState.ASK_NAME
+            profile.state = UserProfileState.IN_ONBOARDING
             update_user_profile(user_input.user_id, profile)
             ui = ob.get("ui") or {}
             reply = ui.get("message") or WELCOME_TEXT
@@ -324,17 +312,7 @@ def chat_with_mona(user_input: UserMessage, request: Request):
             if step.get("done"):
                 profile.state = UserProfileState.COMPLETE
                 update_user_profile(user_input.user_id, profile)
-                # Auto-continue to chat if user appears to have provided a name already
-                if _looks_like_name(message):
-                    # Allow FE to jump straight to chat UI
-                    save_message_to_db(user_input.user_id, "user", message)
-                    reply = "تم حفظ بياناتك ✅ كيف أقدر أساعدك اليوم؟"
-                    save_message_to_db(user_input.user_id, "assistant", reply)
-                    if conversation_id:
-                        log_turn_via_rpc(user_uuid, conversation_id, profile, {}, "onboarding_complete", "assistant", reply)
-                    return {"reply": reply}
-                else:
-                    reply = "تم حفظ بياناتك ✅ كيف أقدر أساعدك اليوم؟"
+                reply = "تم حفظ بياناتك ✅ كيف أقدر أساعدك اليوم؟"
             else:
                 ui = step.get("ui") or {}
                 reply = ui.get("message") or WELCOME_TEXT

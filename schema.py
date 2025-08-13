@@ -2,19 +2,17 @@ from enum import Enum
 from pydantic import BaseModel
 
 class UserProfileState(str, Enum):
-    ASK_NAME = "ask_name"
-    ASK_TITLE = "ask_title"
-    ASK_ROLE = "ask_role"
-    ASK_GOAL = "ask_goal"
-    COMPLETE = "complete"
+    NEW = "NEW"
+    IN_ONBOARDING = "IN_ONBOARDING"
+    COMPLETE = "COMPLETE"
     CONFIRM_RESET = "CONFIRM_RESET"
 
 class UserProfile(BaseModel):
-    name: str = "سعد"
-    title: str = "Founder"
-    role: str = "Marketing Director"
-    goal: str = "زيادة ROI عبر حملات فعّالة"
-    state: UserProfileState = UserProfileState.COMPLETE
+    name: str = ""
+    title: str = ""
+    role: str = ""
+    goal: str = ""
+    state: UserProfileState = UserProfileState.NEW
 
 class UserMessage(BaseModel):
     user_id: str
