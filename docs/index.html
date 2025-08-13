@@ -1,121 +1,557 @@
 <!doctype html>
 <html lang="ar" dir="rtl">
 <head>
-	<meta charset="utf-8" />
-	<meta name="viewport" content="width=device-width,initial-scale=1" />
-	<title>MORVO Demo</title>
-	<style>
-		body { font-family: system-ui, Arial, sans-serif; margin: 20px; color: #111; }
-		.container { max-width: 820px; margin: 0 auto; }
-		h2 { margin-top: 0; }
-		label { display: block; font-weight: 600; margin-bottom: 6px; }
-		input, button { padding: 10px; font-size: 16px; }
-		.row { display: flex; gap: 10px; align-items: center; margin-bottom: 12px; }
-		.row > * { flex: 1; }
-		.small { color: #666; font-size: 13px; }
-		#onb { margin: 8px 0 14px; color: #444; }
-		#log { border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; height: 460px; overflow: auto; background: #fafafa; }
-		.msg { margin: 6px 0; padding: 8px 10px; border-radius: 10px; max-width: 92%; white-space: pre-wrap; }
-		.msg.user { background: #e6ffef; border: 1px solid #b9f6cc; margin-left: auto; }
-		.msg.assistant { background: #eef5ff; border: 1px solid #c7ddff; margin-right: auto; }
-		.footer { margin-top: 14px; color: #777; font-size: 12px; text-align: center; }
-	</style>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>MORVO Demo</title>
+    <style>
+        body { 
+            font-family: system-ui, Arial, sans-serif; 
+            margin: 0; 
+            padding: 20px; 
+            background: #f5f5f5; 
+            color: #333; 
+        }
+        .container { 
+            max-width: 900px; 
+            margin: 0 auto; 
+            background: white; 
+            border-radius: 12px; 
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1); 
+            overflow: hidden; 
+        }
+        .header { 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+            color: white; 
+            padding: 20px; 
+            text-align: center; 
+        }
+        .header h1 { margin: 0; font-size: 24px; }
+        .header p { margin: 8px 0 0; opacity: 0.9; font-size: 14px; }
+        
+        .config-section { 
+            padding: 20px; 
+            border-bottom: 1px solid #eee; 
+            background: #fafafa; 
+        }
+        .config-row { 
+            display: flex; 
+            gap: 15px; 
+            margin-bottom: 15px; 
+            align-items: end; 
+        }
+        .config-group { flex: 1; }
+        .config-group label { 
+            display: block; 
+            font-weight: 600; 
+            margin-bottom: 5px; 
+            color: #555; 
+        }
+        .config-group input { 
+            width: 100%; 
+            padding: 10px; 
+            border: 1px solid #ddd; 
+            border-radius: 6px; 
+            font-size: 14px; 
+            box-sizing: border-box; 
+        }
+        .btn { 
+            padding: 10px 20px; 
+            border: none; 
+            border-radius: 6px; 
+            font-size: 14px; 
+            cursor: pointer; 
+            transition: all 0.2s; 
+        }
+        .btn-primary { 
+            background: #667eea; 
+            color: white; 
+        }
+        .btn-primary:hover { background: #5a6fd8; }
+        .btn-secondary { 
+            background: #6c757d; 
+            color: white; 
+        }
+        .btn-secondary:hover { background: #5a6268; }
+        
+        .chat-container { 
+            display: flex; 
+            height: 500px; 
+        }
+        .chat-messages { 
+            flex: 1; 
+            padding: 20px; 
+            overflow-y: auto; 
+            background: #f8f9fa; 
+        }
+        .message { 
+            margin: 10px 0; 
+            display: flex; 
+            align-items: flex-start; 
+            gap: 10px; 
+        }
+        .message.user { flex-direction: row-reverse; }
+        .message-avatar { 
+            width: 35px; 
+            height: 35px; 
+            border-radius: 50%; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            font-weight: bold; 
+            color: white; 
+            font-size: 14px; 
+        }
+        .message.user .message-avatar { background: #28a745; }
+        .message.assistant .message-avatar { background: #667eea; }
+        .message-content { 
+            max-width: 70%; 
+            padding: 12px 16px; 
+            border-radius: 18px; 
+            white-space: pre-wrap; 
+            word-wrap: break-word; 
+        }
+        .message.user .message-content { 
+            background: #e3f2fd; 
+            color: #1565c0; 
+        }
+        .message.assistant .message-content { 
+            background: #f3e5f5; 
+            color: #7b1fa2; 
+        }
+        
+        .chat-input { 
+            padding: 20px; 
+            border-top: 1px solid #eee; 
+            background: white; 
+        }
+        .input-row { 
+            display: flex; 
+            gap: 10px; 
+        }
+        .input-row input { 
+            flex: 1; 
+            padding: 12px; 
+            border: 1px solid #ddd; 
+            border-radius: 6px; 
+            font-size: 14px; 
+        }
+        .input-row button { 
+            padding: 12px 20px; 
+            background: #667eea; 
+            color: white; 
+            border: none; 
+            border-radius: 6px; 
+            cursor: pointer; 
+            font-size: 14px; 
+        }
+        
+        .onboarding-form { 
+            padding: 20px; 
+            background: white; 
+            border-top: 1px solid #eee; 
+        }
+        .form-step { 
+            display: none; 
+        }
+        .form-step.active { 
+            display: block; 
+        }
+        .form-group { 
+            margin-bottom: 15px; 
+        }
+        .form-group label { 
+            display: block; 
+            font-weight: 600; 
+            margin-bottom: 5px; 
+            color: #555; 
+        }
+        .form-group input, .form-group select { 
+            width: 100%; 
+            padding: 10px; 
+            border: 1px solid #ddd; 
+            border-radius: 6px; 
+            font-size: 14px; 
+            box-sizing: border-box; 
+        }
+        .form-group textarea { 
+            width: 100%; 
+            padding: 10px; 
+            border: 1px solid #ddd; 
+            border-radius: 6px; 
+            font-size: 14px; 
+            box-sizing: border-box; 
+            min-height: 80px; 
+            resize: vertical; 
+        }
+        .form-buttons { 
+            display: flex; 
+            gap: 10px; 
+            justify-content: flex-end; 
+            margin-top: 20px; 
+        }
+        
+        .status { 
+            padding: 10px; 
+            margin: 10px 0; 
+            border-radius: 6px; 
+            font-size: 14px; 
+        }
+        .status.success { 
+            background: #d4edda; 
+            color: #155724; 
+            border: 1px solid #c3e6cb; 
+        }
+        .status.error { 
+            background: #f8d7da; 
+            color: #721c24; 
+            border: 1px solid #f5c6cb; 
+        }
+        .status.info { 
+            background: #d1ecf1; 
+            color: #0c5460; 
+            border: 1px solid #bee5eb; 
+        }
+        
+        .hidden { display: none; }
+    </style>
 </head>
 <body>
-	<div class="container">
-		<h2>واجهة MORVO (بديل سريع للعرض)</h2>
-		<p class="small">أدخل رابط واجهة الـ API الخاصة بباكند FastAPI على Railway، ثم ابدأ التعارف أو أرسل رسالة.</p>
+    <div class="container">
+        <div class="header">
+            <h1>MORVO - المساعد التسويقي الذكي</h1>
+            <p>أدخل رابط API الخاص بك وابدأ المحادثة</p>
+        </div>
+        
+        <div class="config-section">
+            <div class="config-row">
+                <div class="config-group">
+                    <label for="apiBase">رابط API Base</label>
+                    <input id="apiBase" placeholder="https://your-backend.up.railway.app" />
+                </div>
+                <div class="config-group">
+                    <label for="userId">معرف المستخدم</label>
+                    <input id="userId" value="user_demo_1" />
+                </div>
+                <button id="startOnb" class="btn btn-primary">بدء التعارف</button>
+            </div>
+            <div id="status"></div>
+        </div>
+        
+        <div class="chat-container">
+            <div class="chat-messages" id="chatMessages">
+                <div class="message assistant">
+                    <div class="message-avatar">م</div>
+                    <div class="message-content">مرحباً! أنا MORVO، مستشارك التسويقي الذكي. كيف يمكنني مساعدتك اليوم؟</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="chat-input">
+            <div class="input-row">
+                <input id="messageInput" placeholder="اكتب رسالتك هنا..." />
+                <button id="sendBtn">إرسال</button>
+            </div>
+        </div>
+        
+        <div class="onboarding-form hidden" id="onboardingForm">
+            <div class="form-step active" id="step1">
+                <h3>الخطوة الأولى: معلومات أساسية</h3>
+                <div class="form-group">
+                    <label for="userName">الاسم الأول</label>
+                    <input id="userName" placeholder="أدخل اسمك الأول" />
+                </div>
+                <div class="form-group">
+                    <label for="userRole">الدور الوظيفي</label>
+                    <select id="userRole">
+                        <option value="">اختر دورك</option>
+                        <option value="مدير/ة تسويق">مدير/ة تسويق</option>
+                        <option value="مختص/ة تسويق">مختص/ة تسويق</option>
+                        <option value="مالك/ـة مشروع">مالك/ـة مشروع</option>
+                        <option value="رائد/ة أعمال">رائد/ة أعمال</option>
+                        <option value="مدير/ة عام">مدير/ة عام</option>
+                        <option value="أخرى">أخرى</option>
+                    </select>
+                </div>
+                <div class="form-buttons">
+                    <button class="btn btn-secondary" onclick="nextStep()">التالي</button>
+                </div>
+            </div>
+            
+            <div class="form-step" id="step2">
+                <h3>الخطوة الثانية: معلومات الشركة</h3>
+                <div class="form-group">
+                    <label for="industry">نشاط الشركة</label>
+                    <input id="industry" placeholder="مثال: تجارة إلكترونية، مطاعم، تعليم..." />
+                </div>
+                <div class="form-group">
+                    <label for="companySize">حجم الشركة</label>
+                    <select id="companySize">
+                        <option value="">اختر الحجم</option>
+                        <option value="👤 شخص واحد (فريلانسر)">👤 شخص واحد (فريلانسر)</option>
+                        <option value="👥 2–10 موظفين">👥 2–10 موظفين</option>
+                        <option value="🏢 11–50 موظف">🏢 11–50 موظف</option>
+                        <option value="🏗 51+ موظف">🏗 51+ موظف</option>
+                    </select>
+                </div>
+                <div class="form-buttons">
+                    <button class="btn btn-secondary" onclick="prevStep()">السابق</button>
+                    <button class="btn btn-primary" onclick="nextStep()">التالي</button>
+                </div>
+            </div>
+            
+            <div class="form-step" id="step3">
+                <h3>الخطوة الثالثة: الموقع الإلكتروني</h3>
+                <div class="form-group">
+                    <label for="websiteStatus">هل لديك موقع إلكتروني؟</label>
+                    <select id="websiteStatus">
+                        <option value="">اختر الحالة</option>
+                        <option value="✅ نعم – شغّال">✅ نعم – شغّال</option>
+                        <option value="🔧 نعم – يحتاج تطوير">🔧 نعم – يحتاج تطوير</option>
+                        <option value="🏗 تحت الإنشاء">🏗 تحت الإنشاء</option>
+                        <option value="❌ لا">❌ لا</option>
+                    </select>
+                </div>
+                <div class="form-group" id="websiteUrlGroup" style="display: none;">
+                    <label for="websiteUrl">رابط الموقع</label>
+                    <input id="websiteUrl" placeholder="https://example.com" />
+                </div>
+                <div class="form-buttons">
+                    <button class="btn btn-secondary" onclick="prevStep()">السابق</button>
+                    <button class="btn btn-primary" onclick="nextStep()">التالي</button>
+                </div>
+            </div>
+            
+            <div class="form-step" id="step4">
+                <h3>الخطوة الرابعة: الأهداف والميزانية</h3>
+                <div class="form-group">
+                    <label for="goals">الأهداف التسويقية الرئيسية</label>
+                    <textarea id="goals" placeholder="اكتب أهدافك مفصولة بفواصل، مثال: زيادة الوعي، تحسين التحويلات، ترتيب SEO..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="budget">الميزانية الشهرية للتسويق</label>
+                    <select id="budget">
+                        <option value="">اختر الميزانية</option>
+                        <option value="أقل من 5,000 ريال">أقل من 5,000 ريال</option>
+                        <option value="5,000–15,000 ريال">5,000–15,000 ريال</option>
+                        <option value="15,000–50,000 ريال">15,000–50,000 ريال</option>
+                        <option value="أكثر من 50,000 ريال">أكثر من 50,000 ريال</option>
+                        <option value="حسب المشروع">حسب المشروع</option>
+                        <option value="مو محددة">مو محددة</option>
+                    </select>
+                </div>
+                <div class="form-buttons">
+                    <button class="btn btn-secondary" onclick="prevStep()">السابق</button>
+                    <button class="btn btn-primary" onclick="completeOnboarding()">إكمال التعارف</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
-		<div class="row">
-			<div>
-				<label for="apiBase">رابط API Base</label>
-				<input id="apiBase" placeholder="مثال: https://your-backend.onrailway.app" />
-			</div>
-			<div>
-				<label for="userId">معرّف المستخدم</label>
-				<input id="userId" value="user_demo_1" />
-			</div>
-		</div>
-
-		<div class="row" style="margin-top: -8px;">
-			<button id="startOnb" style="flex: 0 0 220px;">بدء التعارف</button>
-			<div id="onb"></div>
-		</div>
-
-		<div id="log" aria-live="polite" aria-label="سجل المحادثة"></div>
-
-		<div class="row">
-			<input id="message" placeholder="اكتب رسالتك هنا…" />
-			<button id="send" style="flex: 0 0 120px;">إرسال</button>
-		</div>
-
-		<p class="small">تلميح: بإمكانك تغيير الـ API Base في أي وقت أثناء التجربة.</p>
-		<div class="footer">© MORVO Demo</div>
-	</div>
-
-	<script>
-		const $ = (id) => document.getElementById(id);
-		const logBox = $("log");
-
-		function apiBase() {
-			return ($("apiBase").value || "").replace(/\/+$/, "");
-		}
-
-		function addMsg(role, text) {
-			const div = document.createElement("div");
-			div.className = `msg ${role}`;
-			div.textContent = text;
-			logBox.appendChild(div);
-			logBox.scrollTop = logBox.scrollHeight;
-		}
-
-		async function startOnboarding() {
-			const base = apiBase();
-			const user_id = $("userId").value.trim();
-			if (!base || !user_id) {
-				$("onb").textContent = "تأكد من تعبئة رابط الـ API ومعرّف المستخدم";
-				return;
-			}
-			$("onb").textContent = "جاري البدء…";
-			try {
-				const r = await fetch(`${base}/onboarding/start`, {
-					method: "POST",
-					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify({ user_id })
-				});
-				const data = await r.json();
-				$("onb").textContent = data?.ui?.message || (r.ok ? "تم البدء ✅" : `خطأ: HTTP ${r.status}`);
-				if (data?.ui?.message) addMsg("assistant", data.ui.message);
-			} catch (e) {
-				$("onb").textContent = "تعذر البدء. تحقق من الرابط أو إعدادات CORS";
-			}
-		}
-
-		async function sendMessage() {
-			const base = apiBase();
-			const user_id = $("userId").value.trim();
-			const message = $("message").value.trim();
-			if (!base || !user_id || !message) return;
-			addMsg("user", `أنا: ${message}`);
-			$("message").value = "";
-			try {
-				const r = await fetch(`${base}/chat`, {
-					method: "POST",
-					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify({ user_id, message })
-				});
-				const data = await r.json();
-				const reply = data?.reply || (r.ok ? "[بدون رد]" : `خطأ: HTTP ${r.status}`);
-				addMsg("assistant", `مورفو: ${reply}`);
-			} catch (e) {
-				addMsg("assistant", "فشل الطلب. تحقق من رابط الـ API و CORS.");
-			}
-		}
-
-		$("startOnb").onclick = startOnboarding;
-		$("send").onclick = sendMessage;
-		$("message").addEventListener("keydown", (e) => { if (e.key === "Enter") sendMessage(); });
-	</script>
+    <script>
+        let currentStep = 1;
+        let onboardingData = {};
+        
+        const $ = (id) => document.getElementById(id);
+        
+        function showStatus(message, type = 'info') {
+            const status = $('status');
+            status.className = `status ${type}`;
+            status.textContent = message;
+        }
+        
+        function addMessage(content, isUser = false) {
+            const messages = $('chatMessages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${isUser ? 'user' : 'assistant'}`;
+            
+            const avatar = document.createElement('div');
+            avatar.className = 'message-avatar';
+            avatar.textContent = isUser ? 'أ' : 'م';
+            
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'message-content';
+            contentDiv.textContent = content;
+            
+            messageDiv.appendChild(avatar);
+            messageDiv.appendChild(contentDiv);
+            messages.appendChild(messageDiv);
+            messages.scrollTop = messages.scrollHeight;
+        }
+        
+        function apiBase() {
+            return ($("apiBase").value || "").replace(/\/+$/, "");
+        }
+        
+        async function startOnboarding() {
+            const base = apiBase();
+            const user_id = $("userId").value.trim();
+            
+            if (!base || !user_id) {
+                showStatus("تأكد من تعبئة رابط الـ API ومعرّف المستخدم", "error");
+                return;
+            }
+            
+            showStatus("جاري بدء التعارف...", "info");
+            
+            try {
+                const response = await fetch(`${base}/onboarding/start`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ user_id })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showStatus("تم بدء التعارف بنجاح", "success");
+                    addMessage("حياك الله! أنا MORVO 🤝 مستشارتك الذكية للتسويق. خلّينا نبدأ بالتعارف...", false);
+                    showOnboardingForm();
+                } else {
+                    showStatus(`خطأ: ${data.detail || 'فشل في بدء التعارف'}`, "error");
+                }
+            } catch (error) {
+                showStatus("تعذر البدء. تحقق من الرابط أو إعدادات CORS", "error");
+            }
+        }
+        
+        function showOnboardingForm() {
+            $('onboardingForm').classList.remove('hidden');
+            $('chatInput').classList.add('hidden');
+        }
+        
+        function hideOnboardingForm() {
+            $('onboardingForm').classList.add('hidden');
+            $('chatInput').classList.remove('hidden');
+        }
+        
+        function showStep(step) {
+            document.querySelectorAll('.form-step').forEach(s => s.classList.remove('active'));
+            $(`step${step}`).classList.add('active');
+            currentStep = step;
+        }
+        
+        function nextStep() {
+            if (currentStep < 4) {
+                showStep(currentStep + 1);
+            }
+        }
+        
+        function prevStep() {
+            if (currentStep > 1) {
+                showStep(currentStep - 1);
+            }
+        }
+        
+        async function completeOnboarding() {
+            // Collect all form data
+            onboardingData = {
+                userName: $('userName').value,
+                userRole: $('userRole').value,
+                industry: $('industry').value,
+                companySize: $('companySize').value,
+                websiteStatus: $('websiteStatus').value,
+                websiteUrl: $('websiteUrl').value,
+                goals: $('goals').value,
+                budget: $('budget').value
+            };
+            
+            // Validate required fields
+            if (!onboardingData.userName || !onboardingData.userRole) {
+                showStatus("يرجى تعبئة جميع الحقول المطلوبة", "error");
+                return;
+            }
+            
+            showStatus("جاري حفظ البيانات...", "info");
+            
+            try {
+                const base = apiBase();
+                const user_id = $("userId").value.trim();
+                
+                // Send onboarding data step by step
+                const steps = [
+                    onboardingData.userName,
+                    onboardingData.userRole,
+                    onboardingData.industry,
+                    onboardingData.companySize,
+                    onboardingData.websiteStatus,
+                    onboardingData.websiteUrl || "لا يوجد",
+                    onboardingData.goals,
+                    onboardingData.budget
+                ];
+                
+                for (let i = 0; i < steps.length; i++) {
+                    const response = await fetch(`${base}/onboarding/step`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ 
+                            user_id, 
+                            value: steps[i] 
+                        })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (response.ok && data.done) {
+                        showStatus("تم إكمال التعارف بنجاح!", "success");
+                        addMessage("تم حفظ بياناتك ✅ كيف أقدر أساعدك اليوم؟", false);
+                        hideOnboardingForm();
+                        return;
+                    }
+                }
+                
+                showStatus("تم حفظ البيانات بنجاح", "success");
+                addMessage("تم حفظ بياناتك ✅ كيف أقدر أساعدك اليوم؟", false);
+                hideOnboardingForm();
+                
+            } catch (error) {
+                showStatus("خطأ في حفظ البيانات", "error");
+            }
+        }
+        
+        async function sendMessage() {
+            const base = apiBase();
+            const user_id = $("userId").value.trim();
+            const message = $("messageInput").value.trim();
+            
+            if (!base || !user_id || !message) return;
+            
+            addMessage(message, true);
+            $("messageInput").value = "";
+            
+            try {
+                const response = await fetch(`${base}/chat`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ user_id, message })
+                });
+                
+                const data = await response.json();
+                const reply = data?.reply || (response.ok ? "[بدون رد]" : `خطأ: HTTP ${response.status}`);
+                addMessage(reply, false);
+                
+            } catch (error) {
+                addMessage("فشل الطلب. تحقق من رابط الـ API و CORS.", false);
+            }
+        }
+        
+        // Event listeners
+        $("startOnb").onclick = startOnboarding;
+        $("sendBtn").onclick = sendMessage;
+        $("messageInput").addEventListener("keydown", (e) => {
+            if (e.key === "Enter") sendMessage();
+        });
+        
+        // Website URL visibility toggle
+        $("websiteStatus").addEventListener("change", function() {
+            const urlGroup = $("websiteUrlGroup");
+            if (this.value.includes("نعم")) {
+                urlGroup.style.display = "block";
+            } else {
+                urlGroup.style.display = "none";
+            }
+        });
+    </script>
 </body>
 </html>
 
