@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from schema import UserMessage, UserProfileState, UserProfile
 from memory_store import get_user_profile, update_user_profile, users, user_memory
 from tools.conversation_logger import to_uuid, get_or_create_conversation, log_turn_via_rpc
-from onboarding_graph import start_onboarding, resume_onboarding
+from simple_onboarding import start_onboarding, resume_onboarding
 from agent import run_agent, answer_with_openai, route_query
 from tools.supabase_client import supabase
 from dotenv import load_dotenv
@@ -121,6 +121,20 @@ def _wants_onboarding(text: str) -> bool:
     triggers = ("ابدأ", "ابدا", "بدء", "تعريف", "سجل", "onboard", "onboarding", "start")
     return any(x in t for x in triggers)
 
+# Heuristic: looks like a first name in Arabic or Latin letters
+import re
+_AR = re.compile(r"^[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\s\-']{2,40}$")
+_LAT = re.compile(r"^[A-Za-z\s\-']{2,40}$")
+_NON_NAMES = {"ايه","أيه","ايوه","أيوه","نعم","لا","تمام","طيب","اوكي","أوكي","اوكيه","مرحبا","اهلا","أهلا","هلا","ok","okay","thanks","thank you"}
+def _looks_like_name(text: str) -> bool:
+    t = (text or "").strip()
+    if not t:
+        return False
+    low = t.lower()
+    if low in _NON_NAMES:
+        return False
+    return bool(_AR.match(t) or _LAT.match(t))
+
 @app.get("/")
 def read_root():
     return {"message": "👋 MORVO is ready to analyze Almarai data!"}
@@ -143,6 +157,10 @@ class ResetRequest(BaseModel):
 
 @app.post("/onboarding/start")
 def onboarding_start(event: OBStartReq):
+    # mark in-memory profile state
+    p = get_user_profile(event.user_id)
+    p.state = UserProfileState.IN_ONBOARDING
+    update_user_profile(event.user_id, p)
     result = start_onboarding(event.user_id)
     ui = result.get("ui", {}) or {}
     # normalize shape expected by FE
@@ -235,6 +253,7 @@ def chat_with_mona(user_input: UserMessage, request: Request):
             uid = str(user_uuid)
             res = _sb.table("profiles").select("user_id").eq("user_id", uid).limit(1).execute()
             profile_exists = bool(res.data)
+            logging.info(f"[chat] profile_exists check: user_id={user_input.user_id} -> uuid={uid} -> exists={profile_exists}")
         except Exception as e:
             logging.info(f"[chat] profile_exists check skipped: {e}")
 
@@ -315,9 +334,26 @@ def chat_with_mona(user_input: UserMessage, request: Request):
         if java_response:
             response = java_response
         else:
-            # Fallback to OpenAI directly with conversation history
+            # Fallback to OpenAI directly with conversation history and profile context
             from agent import MORVO_SYSTEM_PROMPT
-            response = answer_with_openai(message, system_text=MORVO_SYSTEM_PROMPT, history=history)
+            db_prof = _fetch_profile_from_db(str(user_uuid))
+            prof_txt = ""
+            if db_prof:
+                # Compact profile context to guide the model without exposing raw field names
+                parts = []
+                if db_prof.get("user_role"): parts.append(f"role: {db_prof['user_role']}")
+                if db_prof.get("industry"): parts.append(f"industry: {db_prof['industry']}")
+                if db_prof.get("company_size"): parts.append(f"company_size: {db_prof['company_size']}")
+                if db_prof.get("website_status"): parts.append(f"website: {db_prof['website_status']}")
+                if db_prof.get("website_url"): parts.append(f"url: {db_prof['website_url']}")
+                goals = db_prof.get("primary_goals")
+                if isinstance(goals, list) and goals:
+                    parts.append("goals: " + ", ".join([str(g) for g in goals][:5]))
+                if db_prof.get("budget_range"): parts.append(f"budget: {db_prof['budget_range']}")
+                prof_txt = "\nUser profile → " + "; ".join(parts)
+            system_prompt = MORVO_SYSTEM_PROMPT + prof_txt
+            response = answer_with_openai(message, system_text=system_prompt, history=history)
+
     except Exception as e:  # Map specific OpenAI-related errors to clearer HTTP codes/messages
         # Normalize OpenAI exception classes across SDK versions
         oai_error_mod = getattr(openai, "error", None)
