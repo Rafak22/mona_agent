@@ -84,6 +84,7 @@ app.add_middleware(
         "http://localhost:5173",
         "http://localhost:3000",
         "http://localhost:8080",
+        "https://mona-agent.onrender.com",
     ],
     allow_origin_regex=r"^https://([a-zA-Z0-9-]+\.)*(lovable\.app|lovable\.dev|lovableproject\.com|railway\.app)$",
     allow_credentials=True,
