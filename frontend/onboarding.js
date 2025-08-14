@@ -123,10 +123,14 @@ class MorvoOnboarding {
             const data = await response.json();
             this.hideLoading();
             
+            console.log('Onboarding start response:', data);
+            
             if (data.message) {
                 this.displayMessage(data.message);
             }
             
+            // Show text input for user response
+            this.showTextInput();
             this.updateProgress(1);
         } catch (error) {
             this.hideLoading();
@@ -170,6 +174,8 @@ class MorvoOnboarding {
             const data = await response.json();
             this.hideLoading();
 
+            console.log('Onboarding step response:', data);
+
             if (data.done) {
                 // Onboarding complete - redirect to chat
                 this.completeOnboarding();
@@ -184,6 +190,10 @@ class MorvoOnboarding {
             // Update progress
             if (data.state_updates && data.state_updates.step) {
                 this.currentStep = data.state_updates.step;
+                this.updateProgress(this.currentStep);
+            } else {
+                // Increment step if no specific step info
+                this.currentStep++;
                 this.updateProgress(this.currentStep);
             }
 
