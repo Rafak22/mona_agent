@@ -2,37 +2,29 @@ import requests
 import os
 from tools.supabase_client import supabase
 
-def debug_fetch_latest_seo():
+def _check_seo_table_structure():
     """
-    Debug function to check Supabase connection and seo_signals table structure.
+    Internal function to check Supabase connection and seo_signals table structure.
     """
     try:
         response = supabase.table("seo_signals").select("*").limit(1).execute()
         
-        print("🔍 DEBUG: Supabase Response")
-        print(f"Status: {response.status_code if hasattr(response, 'status_code') else 'N/A'}")
-        
         if response.data:
             signal = response.data[0]
-            print("✅ Found SEO signal data:")
-            print(f"Available columns: {list(signal.keys())}")
             return {
                 "success": True,
                 "data": signal,
                 "columns": list(signal.keys())
             }
         else:
-            print("⚠️ No SEO signals found in database")
             return {
                 "success": False,
                 "error": "No SEO signals found in database"
             }
     except Exception as e:
-        error_msg = f"🔥 Supabase Error: {str(e)}"
-        print(error_msg)
         return {
             "success": False,
-            "error": error_msg
+            "error": f"Supabase Error: {str(e)}"
         }
 
 def fetch_seo_signals_summary() -> str:
@@ -46,13 +38,13 @@ def fetch_seo_signals_summary() -> str:
     - competition: float
     """
     try:
-        # First, run debug check
-        debug_result = debug_fetch_latest_seo()
-        if not debug_result["success"]:
-            return f"⚠️ خطأ في الاتصال: {debug_result['error']}"
+        # First, check table structure
+        table_check = _check_seo_table_structure()
+        if not table_check["success"]:
+            return f"⚠️ خطأ في الاتصال: {table_check['error']}"
 
-        # If debug successful, try actual fetch with correct columns
-        available_columns = debug_result.get("columns", [])
+        # If check successful, try actual fetch with correct columns
+        available_columns = table_check.get("columns", [])
 
         result = supabase.table("seo_signals") \
             .select(",".join(available_columns)) \
@@ -83,13 +75,9 @@ def fetch_seo_signals_summary() -> str:
                     f"  - المنافسة: {competition_level}\n"
                 )
             except Exception as signal_e:
-                print(f"🔥 Error processing SEO signal: {signal_e}")
-                print(f"Signal data: {signal}")
                 summary_parts.append("⚠️ خطأ في معالجة هذه الكلمة المفتاحية")
 
         return "\n".join(summary_parts)
 
     except Exception as e:
-        error_msg = f"🔥 Error fetching SEO signals: {str(e)}"
-        print(error_msg)
-        return f"❌ فشل في جلب بيانات SEO:\n{error_msg}"
+        return f"❌ فشل في جلب بيانات SEO: {str(e)}"

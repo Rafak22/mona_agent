@@ -7,6 +7,14 @@ from tools.supabase_client import supabase as _sb
 # ---- OpenAI (GPT-4 family) ----
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o")  # or "gpt-4.1"
+
+# Debug: Check if API key is set
+if not OPENAI_API_KEY:
+    print("⚠️ WARNING: OPENAI_API_KEY is not set!")
+    print("Available environment variables:", [k for k in os.environ.keys() if 'OPENAI' in k.upper()])
+else:
+    print(f"✅ OPENAI_API_KEY is set (length: {len(OPENAI_API_KEY)})")
+
 _oai = OpenAI(api_key=OPENAI_API_KEY)
 
 MORVO_SYSTEM_PROMPT = (
@@ -25,6 +33,9 @@ MORVO_SYSTEM_PROMPT = (
 )
 
 def answer_with_openai(user_text: str, *, system_text: str, history: List[Dict[str, str]] = None) -> str:
+    if not OPENAI_API_KEY:
+        raise Exception("OpenAI API key is not configured. Please set OPENAI_API_KEY environment variable.")
+    
     messages = [{"role": "system", "content": system_text}]
     
     # Add conversation history if provided
@@ -34,13 +45,19 @@ def answer_with_openai(user_text: str, *, system_text: str, history: List[Dict[s
     # Add current user message
     messages.append({"role": "user", "content": user_text})
     
-    resp = _oai.chat.completions.create(
-        model=OPENAI_MODEL,
-        messages=messages,
-        temperature=0.3,
-        max_tokens=700,
-    )
-    return resp.choices[0].message.content.strip()
+    try:
+        resp = _oai.chat.completions.create(
+            model=OPENAI_MODEL,
+            messages=messages,
+            temperature=0.3,
+            max_tokens=700,
+        )
+        return resp.choices[0].message.content.strip()
+    except Exception as e:
+        print(f"❌ OpenAI API Error: {e}")
+        if "authentication" in str(e).lower() or "bearer" in str(e).lower():
+            raise Exception("OpenAI API key is invalid or missing. Please check your OPENAI_API_KEY environment variable.")
+        raise e
 
 # ---- Routing keywords (Arabic + English synonyms) ----
 ROUTE_KEYWORDS = {

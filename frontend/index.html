@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>مورفو - مساعدك الذكي في التسويق</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <!-- Welcome Card (shown if no user ID) -->
+        <div class="welcome-card" id="welcomeCard">
+            <div class="header">
+                <h1 class="main-title">مورفو</h1>
+                <p class="subtitle">مساعدك الذكي في التسويق</p>
+            </div>
+            
+            <div class="welcome-content">
+                <div class="welcome-message">
+                    <h2>مرحباً بك في مورفو! 🤝</h2>
+                    <p>أنا مساعدك الذكي في التسويق، جاهز لمساعدتك في تحليل البيانات وتطوير استراتيجيات التسويق.</p>
+                </div>
+                
+                <div class="welcome-features">
+                    <div class="feature">
+                        <span class="feature-icon">📊</span>
+                        <span>تحليل السمعة والذكور</span>
+                    </div>
+                    <div class="feature">
+                        <span class="feature-icon">📱</span>
+                        <span>متابعة أداء المنشورات</span>
+                    </div>
+                    <div class="feature">
+                        <span class="feature-icon">🔍</span>
+                        <span>تحليل SEO والكلمات المفتاحية</span>
+                    </div>
+                </div>
+                
+                <button class="start-button" id="startButton">
+                    <span>ابدأ الآن</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Chat Interface (Hidden initially) -->
+        <div class="chat-interface" id="chatInterface" style="display: none;">
+            <div class="chat-header">
+                <h2>مورفو</h2>
+                <p>مساعدك الذكي في التسويق</p>
+            </div>
+            
+            <div class="chat-messages" id="chatMessages">
+                <!-- Chat messages will appear here -->
+            </div>
+            
+            <div class="chat-input-area">
+                <input type="text" id="chatInput" placeholder="اكتب رسالتك هنا..." class="chat-input">
+                <button class="send-button" id="sendButton">
+                    <span>إرسال</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Loading Overlay -->
+        <div class="loading-overlay" id="loadingOverlay" style="display: none;">
+            <div class="loading-spinner"></div>
+            <p>جاري التحميل...</p>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

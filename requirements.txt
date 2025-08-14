@@ -1,8 +1,9 @@
-fastapi
-uvicorn
+fastapi>=0.104.0
+uvicorn[standard]
 python-dotenv
 requests
 langchain
+langchain-openai
 pydantic
 supabase
 langgraph>=0.2.26

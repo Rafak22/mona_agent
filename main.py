@@ -1,6 +1,8 @@
 import logging
 from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from schema import UserMessage, UserProfileState, UserProfile
 from memory_store import get_user_profile, update_user_profile, users, user_memory
@@ -9,7 +11,7 @@ from onboarding_graph import start_onboarding, resume_onboarding
 from agent import run_agent, answer_with_openai, route_query
 from tools.supabase_client import supabase
 from dotenv import load_dotenv
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Any
 import asyncio
 import openai  # for catching SDK-specific exceptions across versions
 import os
@@ -75,7 +77,7 @@ def _fetch_profile_from_db(user_uuid_str: str) -> Optional[Dict[str, str]]:
         logging.info(f"[chat] fetch profile failed: {e}")
     return None
 
-app = FastAPI()
+app = FastAPI(title="MORVO Agent", version="1.0.0")
 
 # Expanded CORS to support Lovable subdomains and local development
 app.add_middleware(
@@ -92,6 +94,24 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Mount static files for frontend
+app.mount("/frontend", StaticFiles(directory="frontend"), name="frontend")
+
+# Serve the main entry point
+@app.get("/")
+async def root():
+    return FileResponse("frontend/start.html")
+
+# Serve onboarding page
+@app.get("/onboarding")
+async def onboarding():
+    return FileResponse("frontend/onboarding.html")
+
+# Serve chat page
+@app.get("/chat")
+async def chat():
+    return FileResponse("frontend/index.html")
 
 @app.options("/{path:path}")
 def cors_preflight(path: str, request: Request) -> Response:
@@ -134,10 +154,6 @@ def _looks_like_name(text: str) -> bool:
     if low in _NON_NAMES:
         return False
     return bool(_AR.match(t) or _LAT.match(t))
-
-@app.get("/")
-def read_root():
-    return {"message": "👋 MORVO is ready to analyze Almarai data!"}
 
 class OBStartReq(BaseModel):
     user_id: str
