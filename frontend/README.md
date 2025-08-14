@@ -15,9 +15,12 @@ Beautiful, modern frontend for the MORVO marketing assistant with Arabic RTL sup
 
 ```
 frontend/
-├── index.html          # Main HTML file
+├── start.html          # Entry point - redirects to appropriate page
+├── onboarding.html     # Onboarding page (separate)
+├── index.html          # Chat interface (main app)
 ├── styles.css          # CSS styling
-├── script.js           # JavaScript functionality
+├── onboarding.js       # Onboarding JavaScript
+├── script.js           # Chat JavaScript
 └── README.md           # This file
 ```
 
@@ -25,7 +28,7 @@ frontend/
 
 1. **Place the frontend files** in your project's `frontend/` directory
 2. **Ensure your backend is running** on the same domain (or configure CORS)
-3. **Open `index.html`** in a web browser
+3. **Open `start.html`** in a web browser (this will redirect to the appropriate page)
 
 ## Usage
 
@@ -35,7 +38,8 @@ frontend/
 python main.py
 
 # Open the frontend
-# Navigate to frontend/index.html in your browser
+# Navigate to frontend/start.html in your browser
+# This will automatically redirect to onboarding or chat based on user status
 ```
 
 ### Production
@@ -53,7 +57,12 @@ The frontend communicates with these backend endpoints:
 
 ## Features
 
-### Onboarding Flow
+### User Flow
+1. **Entry Point** (`start.html`) - Checks user status and redirects appropriately
+2. **Onboarding** (`onboarding.html`) - 8-step user profiling (if new user)
+3. **Chat Interface** (`index.html`) - Main chat application (if returning user)
+
+### Onboarding Steps
 1. **Welcome** - Initial greeting and introduction
 2. **Name Collection** - User's first name with validation
 3. **Role Selection** - Marketing role (manager, entrepreneur, etc.)
@@ -63,7 +72,7 @@ The frontend communicates with these backend endpoints:
 7. **Website URL** - Website URL (if applicable)
 8. **Goals** - Marketing objectives
 9. **Budget** - Marketing budget range
-10. **Completion** - Welcome to chat interface
+10. **Completion** - Redirect to chat interface
 
 ### Chat Interface
 - Real-time messaging with MORVO

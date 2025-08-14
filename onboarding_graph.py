@@ -591,13 +591,21 @@ def _save_profile_to_db(state: OBState) -> None:
     try:
         profile_data = state.get("profile", {})
         payload = {k: v for k, v in profile_data.items() if k in _ALLOWED_DB_KEYS}
-        if state.get("user_id"):
-            payload["user_id"] = _to_uuid_str(state["user_id"])
         
+        # Ensure user_id is always set
+        user_id = state.get("user_id")
+        if user_id:
+            payload["user_id"] = _to_uuid_str(user_id)
+        else:
+            print(f"[onboarding] No user_id in state, skipping save")
+            return
+        
+        print(f"[onboarding] saving profile: {payload}")
         _sb.table("profiles").upsert(payload, on_conflict="user_id").execute()
-        print(f"[onboarding] saved profile for {state.get('user_id')} -> {payload.get('user_id')}")
+        print(f"[onboarding] saved profile for {user_id} -> {payload.get('user_id')}")
     except Exception as e:
         print(f"[onboarding] failed to save profile: {e}")
+        print(f"[onboarding] payload was: {payload}")
 
 def _cfg(user_id: str) -> Dict[str, Any]:
     return {"configurable": {"thread_id": f"onb:{user_id}"}}

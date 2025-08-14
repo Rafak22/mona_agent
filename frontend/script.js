@@ -1,28 +1,21 @@
 // MORVO Frontend JavaScript
 class MorvoApp {
     constructor() {
-        this.currentStep = 1;
-        this.userId = this.generateUserId();
+        this.userId = this.getUserId();
         this.userProfile = {};
         this.isOnboardingComplete = false;
         
         this.initializeElements();
         this.bindEvents();
-        this.startOnboarding();
+        this.checkUserStatus();
     }
 
     // Initialize DOM elements
     initializeElements() {
-        this.onboardingCard = document.getElementById('onboardingCard');
+        this.welcomeCard = document.getElementById('welcomeCard');
         this.chatInterface = document.getElementById('chatInterface');
-        this.messageContent = document.getElementById('messageContent');
-        this.textInput = document.getElementById('textInput');
-        this.nextButton = document.getElementById('nextButton');
-        this.optionsContainer = document.getElementById('optionsContainer');
-        this.optionsGrid = document.getElementById('optionsGrid');
-        this.textInputContainer = document.getElementById('textInputContainer');
+        this.startButton = document.getElementById('startButton');
         this.loadingOverlay = document.getElementById('loadingOverlay');
-        this.progressDots = document.querySelectorAll('.progress-dot');
         
         // Chat elements
         this.chatMessages = document.getElementById('chatMessages');
@@ -32,16 +25,18 @@ class MorvoApp {
 
     // Bind event listeners
     bindEvents() {
-        this.nextButton.addEventListener('click', () => this.handleNext());
-        this.textInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') this.handleNext();
-        });
+        this.startButton.addEventListener('click', () => this.startOnboarding());
         
         // Chat events
         this.sendButton.addEventListener('click', () => this.sendChatMessage());
         this.chatInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') this.sendChatMessage();
         });
+    }
+
+    // Get user ID from localStorage or generate new one
+    getUserId() {
+        return localStorage.getItem('morvo_user_id') || this.generateUserId();
     }
 
     // Generate unique user ID
@@ -114,99 +109,48 @@ class MorvoApp {
         this.textInput.value = option;
     }
 
-    // Start onboarding
-    async startOnboarding() {
-        this.showLoading();
-        try {
-            const response = await fetch('/onboarding/start', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    user_id: this.userId
-                })
-            });
-
-            const data = await response.json();
-            this.hideLoading();
-            
-            if (data.message) {
-                this.displayMessage(data.message);
-            }
-            
-            this.updateProgress(1);
-        } catch (error) {
-            this.hideLoading();
-            console.error('Error starting onboarding:', error);
-            this.displayMessage('عذراً، حدث خطأ في بدء العملية. يرجى المحاولة مرة أخرى.');
-        }
-    }
-
-    // Handle next step
-    async handleNext() {
-        const userInput = this.textInput.value.trim();
-        
-        if (!userInput) {
-            this.textInput.focus();
+    // Check user status and show appropriate interface
+    async checkUserStatus() {
+        if (!this.userId) {
+            this.showWelcomeCard();
             return;
         }
 
-        this.showLoading();
         try {
-            const response = await fetch('/onboarding/step', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    user_id: this.userId,
-                    value: userInput
-                })
-            });
-
+            const response = await fetch(`/profile/status?user_id=${this.userId}`);
             const data = await response.json();
-            this.hideLoading();
-
-            if (data.done) {
-                // Onboarding complete
-                this.isOnboardingComplete = true;
+            
+            if (data.has_profile) {
                 this.showChatInterface();
-                return;
-            }
-
-            // Update UI based on response
-            if (data.message) {
-                this.displayMessage(data.message);
-            }
-
-            // Update progress
-            if (data.state_updates && data.state_updates.step) {
-                this.currentStep = data.state_updates.step;
-                this.updateProgress(this.currentStep);
-            }
-
-            // Show appropriate input type
-            if (data.ui_type === 'options' && data.options) {
-                this.showOptions(data.options);
             } else {
-                this.showTextInput();
+                this.showWelcomeCard();
             }
-
         } catch (error) {
-            this.hideLoading();
-            console.error('Error in onboarding step:', error);
-            this.displayMessage('عذراً، حدث خطأ. يرجى المحاولة مرة أخرى.');
+            console.error('Error checking user status:', error);
+            this.showWelcomeCard();
         }
     }
 
+    // Show welcome card
+    showWelcomeCard() {
+        this.welcomeCard.style.display = 'block';
+        this.chatInterface.style.display = 'none';
+    }
+
+    // Start onboarding (redirect to onboarding page)
+    startOnboarding() {
+        window.location.href = 'onboarding.html';
+    }
+
+
+
     // Show chat interface
     showChatInterface() {
-        this.onboardingCard.style.display = 'none';
+        this.welcomeCard.style.display = 'none';
         this.chatInterface.style.display = 'flex';
         
         // Add welcome message
-        this.addChatMessage('assistant', 'مرحباً! تم إكمال التسجيل بنجاح. كيف يمكنني مساعدتك اليوم؟');
+        this.addChatMessage('assistant', 'مرحباً! كيف يمكنني مساعدتك اليوم؟');
     }
 
     // Add chat message
@@ -271,15 +215,13 @@ class MorvoApp {
         }
     }
 
-    // Reset onboarding (for testing)
-    resetOnboarding() {
-        this.currentStep = 1;
+    // Reset user (for testing)
+    resetUser() {
+        localStorage.removeItem('morvo_user_id');
+        this.userId = this.generateUserId();
         this.userProfile = {};
         this.isOnboardingComplete = false;
-        this.onboardingCard.style.display = 'block';
-        this.chatInterface.style.display = 'none';
-        this.updateProgress(1);
-        this.startOnboarding();
+        this.showWelcomeCard();
     }
 }
 
@@ -288,8 +230,8 @@ document.addEventListener('DOMContentLoaded', () => {
     window.morvoApp = new MorvoApp();
     
     // Add reset functionality for testing (remove in production)
-    window.resetOnboarding = () => {
-        window.morvoApp.resetOnboarding();
+    window.resetUser = () => {
+        window.morvoApp.resetUser();
     };
 });
 
@@ -299,7 +241,7 @@ document.addEventListener('keydown', (e) => {
     if ((e.ctrlKey || e.metaKey) && e.key === 'r') {
         e.preventDefault();
         if (window.morvoApp) {
-            window.morvoApp.resetOnboarding();
+            window.morvoApp.resetUser();
         }
     }
 });

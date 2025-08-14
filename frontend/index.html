@@ -9,56 +9,36 @@
 </head>
 <body>
     <div class="container">
-        <!-- Onboarding Card -->
-        <div class="onboarding-card" id="onboardingCard">
-            <!-- Header -->
+        <!-- Welcome Card (shown if no user ID) -->
+        <div class="welcome-card" id="welcomeCard">
             <div class="header">
                 <h1 class="main-title">مورفو</h1>
                 <p class="subtitle">مساعدك الذكي في التسويق</p>
             </div>
-
-            <!-- Progress Indicator -->
-            <div class="progress-indicator">
-                <div class="progress-dot active" data-step="1"></div>
-                <div class="progress-dot" data-step="2"></div>
-                <div class="progress-dot" data-step="3"></div>
-                <div class="progress-dot" data-step="4"></div>
-                <div class="progress-dot" data-step="5"></div>
-                <div class="progress-dot" data-step="6"></div>
-                <div class="progress-dot" data-step="7"></div>
-                <div class="progress-dot" data-step="8"></div>
-            </div>
-
-            <!-- Content Area -->
-            <div class="content-area">
-                <!-- Display/Output Box -->
-                <div class="display-box" id="displayBox">
-                    <div class="message-content" id="messageContent">
-                        مرحباً! أنا مورفو، مساعدك الذكي في التسويق. دعنا نبدأ بالتعارف...
+            
+            <div class="welcome-content">
+                <div class="welcome-message">
+                    <h2>مرحباً بك في مورفو! 🤝</h2>
+                    <p>أنا مساعدك الذكي في التسويق، جاهز لمساعدتك في تحليل البيانات وتطوير استراتيجيات التسويق.</p>
+                </div>
+                
+                <div class="welcome-features">
+                    <div class="feature">
+                        <span class="feature-icon">📊</span>
+                        <span>تحليل السمعة والذكور</span>
+                    </div>
+                    <div class="feature">
+                        <span class="feature-icon">📱</span>
+                        <span>متابعة أداء المنشورات</span>
+                    </div>
+                    <div class="feature">
+                        <span class="feature-icon">🔍</span>
+                        <span>تحليل SEO والكلمات المفتاحية</span>
                     </div>
                 </div>
-
-                <!-- Input Area -->
-                <div class="input-area" id="inputArea">
-                    <!-- Text Input -->
-                    <div class="text-input-container" id="textInputContainer">
-                        <input type="text" id="textInput" placeholder="اكتب إجابتك هنا..." class="text-input">
-                    </div>
-
-                    <!-- Options Container -->
-                    <div class="options-container" id="optionsContainer" style="display: none;">
-                        <div class="options-grid" id="optionsGrid">
-                            <!-- Options will be dynamically added here -->
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Action Button -->
-            <div class="action-area">
-                <button class="next-button" id="nextButton">
-                    <span class="button-icon">→</span>
-                    <span class="button-text">التالي</span>
+                
+                <button class="start-button" id="startButton">
+                    <span>ابدأ الآن</span>
                 </button>
             </div>
         </div>
