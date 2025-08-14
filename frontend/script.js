@@ -117,7 +117,7 @@ class MorvoApp {
         }
 
         try {
-            const response = await fetch(`/profile/status?user_id=${this.userId}`);
+            const response = await fetch(`https://monaagent-production-123a.up.railway.app/profile/status?user_id=${this.userId}`);
             const data = await response.json();
             
             if (data.has_profile) {
@@ -188,7 +188,7 @@ class MorvoApp {
         this.sendButton.textContent = 'جاري الإرسال...';
 
         try {
-            const response = await fetch('/chat', {
+            const response = await fetch('https://monaagent-production-123a.up.railway.app/chat', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

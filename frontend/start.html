@@ -60,7 +60,7 @@
         
         if (userId) {
             // User exists, check if they have a profile
-            fetch(`/profile/status?user_id=${userId}`)
+                                    fetch(`https://monaagent-production-123a.up.railway.app/profile/status?user_id=${userId}`)
                 .then(response => response.json())
                 .then(data => {
                     if (data.has_profile) {
