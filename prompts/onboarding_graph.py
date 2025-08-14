@@ -67,6 +67,34 @@ BUDGET_OPTIONS = [
     {"id": "later", "label": "🤔 لاحقًا"},
 ]
 
+def _save_profile_to_profiles_table(user_id: str, state: Dict[str, Any]) -> None:
+    """Save clean profile data to profiles table"""
+    try:
+        # Map the onboarding IDs to readable values
+        role_map = {opt["id"]: opt["label"] for opt in ROLE_OPTIONS}
+        industry_map = {opt["id"]: opt["label"] for opt in INDUSTRY_OPTIONS}
+        size_map = {opt["id"]: opt["label"] for opt in SIZE_OPTIONS}
+        
+        profile_data = {
+            "user_id": user_id,
+            "user_role": role_map.get(state.get("user_role"), state.get("user_role")),
+            "industry": industry_map.get(state.get("industry"), state.get("industry")),
+            "company_size": size_map.get(state.get("company_size"), state.get("company_size")),
+            "website_status": "Yes" if state.get("website_status") in ["active", "needs_work", "under_construction"] else "No",
+            "website_url": state.get("website_url"),
+            "primary_goals": [goal for goal in state.get("primary_goals", [])],
+            "budget_range": state.get("budget_range")
+        }
+        
+        # Remove None values
+        clean_data = {k: v for k, v in profile_data.items() if v is not None}
+        
+        # Save to profiles table
+        supabase.table("profiles").upsert(clean_data, on_conflict="user_id").execute()
+        print(f"✅ Profile saved for user {user_id}")
+        
+    except Exception as e:
+        print(f"❌ Profile save failed: {e}")
 
 def _load_state(conversation_id: str) -> Dict[str, Any]:
     try:
@@ -76,7 +104,6 @@ def _load_state(conversation_id: str) -> Dict[str, Any]:
     except Exception:
         pass
     return {}
-
 
 def start_step(user_id: str) -> Dict[str, Any]:
     user_uuid = to_uuid(user_id)
@@ -91,7 +118,6 @@ def start_step(user_id: str) -> Dict[str, Any]:
     state = _load_state(conversation_id)
     persist_step_result(user_uuid, conversation_id, state, agent_response, ROLE)
     return agent_response | {"conversation_id": conversation_id}
-
 
 def next_step(user_id: str, conversation_id: str, current_step: str, payload: Dict[str, Any]) -> Dict[str, Any]:
     user_uuid = to_uuid(user_id)
@@ -142,6 +168,10 @@ def next_step(user_id: str, conversation_id: str, current_step: str, payload: Di
 
     if current_step == BUDGET:
         state["budget_range"] = payload.get("value")
+        
+        # 🎯 Save complete profile to profiles table
+        _save_profile_to_profiles_table(user_id, state)
+        
         agent_response = {"ui_type": "input", "message": "تم! المعلومات اتحفظت. اكتب 'ابدأ' علشان نكمل.", "fields": [], "state_updates": {}}
         persist_step_result(user_uuid, conversation_id, state, agent_response, DONE)
         return agent_response
