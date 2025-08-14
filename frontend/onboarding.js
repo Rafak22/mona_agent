@@ -16,6 +16,7 @@ class MorvoOnboarding {
         this.messageContent = document.getElementById('messageContent');
         this.textInput = document.getElementById('textInput');
         this.nextButton = document.getElementById('nextButton');
+        this.backButton = document.getElementById('backButton');
         this.optionsContainer = document.getElementById('optionsContainer');
         this.optionsGrid = document.getElementById('optionsGrid');
         this.textInputContainer = document.getElementById('textInputContainer');
@@ -26,6 +27,7 @@ class MorvoOnboarding {
     // Bind event listeners
     bindEvents() {
         this.nextButton.addEventListener('click', () => this.handleNext());
+        this.backButton.addEventListener('click', () => this.handleBack());
         this.textInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') this.handleNext();
         });
@@ -56,6 +58,9 @@ class MorvoOnboarding {
                 dot.classList.add('active');
             }
         });
+        
+        // Update back button state
+        this.backButton.disabled = step <= 1;
     }
 
     // Display message
@@ -127,6 +132,16 @@ class MorvoOnboarding {
             this.hideLoading();
             console.error('Error starting onboarding:', error);
             this.displayMessage('عذراً، حدث خطأ في بدء العملية. يرجى المحاولة مرة أخرى.');
+        }
+    }
+
+    // Handle back step
+    handleBack() {
+        if (this.currentStep > 1) {
+            this.currentStep--;
+            this.updateProgress(this.currentStep);
+            // For now, just go back to previous step
+            // In a full implementation, you'd want to restore previous state
         }
     }
 

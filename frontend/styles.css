@@ -66,13 +66,13 @@ body {
 .progress-indicator {
     display: flex;
     justify-content: center;
-    gap: 8px;
+    gap: 12px;
     margin-bottom: 30px;
 }
 
 .progress-dot {
-    width: 12px;
-    height: 12px;
+    width: 16px;
+    height: 16px;
     border-radius: 50%;
     background: #e0e0e0;
     border: 2px solid #f0f0f0;
@@ -82,7 +82,7 @@ body {
 .progress-dot.active {
     background: #667eea;
     border-color: #667eea;
-    transform: scale(1.2);
+    transform: scale(1.1);
 }
 
 .progress-dot.completed {
@@ -99,14 +99,15 @@ body {
 .display-box {
     background: #f8f9fa;
     border-radius: 15px;
-    padding: 20px;
-    margin-bottom: 20px;
-    min-height: 80px;
+    padding: 25px;
+    margin-bottom: 25px;
+    min-height: 120px;
     display: flex;
     align-items: center;
     justify-content: center;
     border: 2px solid #e9ecef;
     transition: all 0.3s ease;
+    position: relative;
 }
 
 .display-box:hover {
@@ -117,8 +118,9 @@ body {
 .message-content {
     font-size: 1.1rem;
     color: #333;
-    line-height: 1.6;
+    line-height: 1.7;
     text-align: center;
+    max-width: 100%;
 }
 
 /* Input Area */
@@ -269,7 +271,37 @@ body {
 
 /* Action Area */
 .action-area {
-    text-align: center;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 15px;
+}
+
+.back-button {
+    background: #f8f9fa;
+    color: #666;
+    border: 2px solid #e9ecef;
+    padding: 12px 20px;
+    border-radius: 12px;
+    font-size: 1rem;
+    font-weight: 500;
+    font-family: 'Cairo', sans-serif;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.back-button:hover {
+    background: #e9ecef;
+    border-color: #667eea;
+    color: #667eea;
+}
+
+.back-button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
 }
 
 .next-button {
@@ -287,6 +319,8 @@ body {
     align-items: center;
     gap: 10px;
     box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+    flex: 1;
+    justify-content: center;
 }
 
 .next-button:hover {
@@ -306,7 +340,6 @@ body {
 
 .button-icon {
     font-size: 1.2rem;
-    transform: rotate(180deg);
 }
 
 /* Chat Interface */
