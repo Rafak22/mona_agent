@@ -260,11 +260,13 @@ def n_smart_industry(state: OBState) -> Dict[str, Any]:
     """Smart industry input with suggestions"""
     profile_data = state.get("profile", {})
     user_role = profile_data.get("user_role", "")
+    user_id = state.get("user_id")  # Preserve user_id
     
     if "resume" in state:
         industry = str(state["resume"]).strip()
         if len(industry) < 3:
             return {
+                "user_id": user_id,  # Preserve user_id
                 "ui": {
                     "ui_type": "input",
                     "message": "❌ النشاط قصير جداً. اكتب نشاط شركتكم بالتفصيل:",
@@ -283,6 +285,7 @@ def n_smart_industry(state: OBState) -> Dict[str, Any]:
         )
         
         return {
+            "user_id": user_id,  # Preserve user_id
             "profile": profile_data,
             "ai_insights": industry_insight,
             "current_step": "company_size"
@@ -301,6 +304,7 @@ def n_smart_industry(state: OBState) -> Dict[str, Any]:
     message = f"🏢 نشاط شركتكم إيش؟\n\n{suggestion}"
     
     return {
+        "user_id": user_id,  # Preserve user_id
         "ui": {
             "ui_type": "input",
             "message": message,
@@ -313,11 +317,13 @@ def n_smart_industry(state: OBState) -> Dict[str, Any]:
 def n_smart_company_size(state: OBState) -> Dict[str, Any]:
     """Smart company size selection"""
     profile_data = state.get("profile", {})
+    user_id = state.get("user_id")  # Preserve user_id
     
     if "resume" in state:
         size = str(state["resume"])
         profile_data["company_size"] = size
         return {
+            "user_id": user_id,  # Preserve user_id
             "profile": profile_data,
             "current_step": "website_status"
         }
@@ -333,6 +339,7 @@ def n_smart_company_size(state: OBState) -> Dict[str, Any]:
     message = "📊 كم حجم الشركة؟\n\nاختر الفئة الأقرب ليك:"
     
     return {
+        "user_id": user_id,  # Preserve user_id
         "ui": {
             "ui_type": "options",
             "message": message,
@@ -345,6 +352,7 @@ def n_smart_company_size(state: OBState) -> Dict[str, Any]:
 def n_smart_website_status(state: OBState) -> Dict[str, Any]:
     """Smart website status with conditional logic"""
     profile_data = state.get("profile", {})
+    user_id = state.get("user_id")  # Preserve user_id
     
     if "resume" in state:
         status = str(state["resume"])
@@ -352,6 +360,7 @@ def n_smart_website_status(state: OBState) -> Dict[str, Any]:
         profile_data["website_status"] = "Yes" if has_website else "No"
         
         return {
+            "user_id": user_id,  # Preserve user_id
             "profile": profile_data,
             "current_step": "website_url" if has_website else "goals"
         }
@@ -366,6 +375,7 @@ def n_smart_website_status(state: OBState) -> Dict[str, Any]:
     message = "🌐 عندكم موقع إلكتروني؟\n\nاختر الحالة الأقرب ليك:"
     
     return {
+        "user_id": user_id,  # Preserve user_id
         "ui": {
             "ui_type": "options",
             "message": message,
@@ -378,6 +388,7 @@ def n_smart_website_status(state: OBState) -> Dict[str, Any]:
 def n_smart_website_url(state: OBState) -> Dict[str, Any]:
     """Smart website URL validation"""
     profile_data = state.get("profile", {})
+    user_id = state.get("user_id")  # Preserve user_id
     
     if "resume" in state:
         url = str(state["resume"])
@@ -386,11 +397,13 @@ def n_smart_website_url(state: OBState) -> Dict[str, Any]:
         if is_valid:
             profile_data["website_url"] = result
             return {
+                "user_id": user_id,  # Preserve user_id
                 "profile": profile_data,
                 "current_step": "goals"
             }
         else:
             return {
+                "user_id": user_id,  # Preserve user_id
                 "ui": {
                     "ui_type": "input",
                     "message": f"❌ {result}\n\nحاول مرة أخرى:",
@@ -402,6 +415,7 @@ def n_smart_website_url(state: OBState) -> Dict[str, Any]:
     message = "🔗 أرسل رابط الموقع\n\nمثال: https://example.com"
     
     return {
+        "user_id": user_id,  # Preserve user_id
         "ui": {
             "ui_type": "input",
             "message": message,
@@ -415,6 +429,7 @@ def n_smart_goals(state: OBState) -> Dict[str, Any]:
     """Smart goals collection with suggestions"""
     profile_data = state.get("profile", {})
     industry = profile_data.get("industry", "")
+    user_id = state.get("user_id")  # Preserve user_id
     
     if "resume" in state:
         goals_input = str(state["resume"])
@@ -431,12 +446,14 @@ def n_smart_goals(state: OBState) -> Dict[str, Any]:
             )
             
             return {
+                "user_id": user_id,  # Preserve user_id
                 "profile": profile_data,
                 "ai_insights": goals_insight,
                 "current_step": "budget"
             }
         else:
             return {
+                "user_id": user_id,  # Preserve user_id
                 "ui": {
                     "ui_type": "input",
                     "message": "❌ الأهداف غير واضحة. اكتب أهدافك مفصولة بفواصل:",
@@ -458,6 +475,7 @@ def n_smart_goals(state: OBState) -> Dict[str, Any]:
     message = f"🎯 وش أهم أهدافك التسويقية؟\n\nاكتبها مفصولة بفواصل (،)\nمثال: {suggestion}"
     
     return {
+        "user_id": user_id,  # Preserve user_id
         "ui": {
             "ui_type": "input",
             "message": message,
@@ -471,11 +489,13 @@ def n_smart_budget(state: OBState) -> Dict[str, Any]:
     """Smart budget selection with recommendations"""
     profile_data = state.get("profile", {})
     company_size = profile_data.get("company_size", "")
+    user_id = state.get("user_id")  # Preserve user_id
     
     if "resume" in state:
         budget = str(state["resume"])
         profile_data["budget_range"] = budget
         return {
+            "user_id": user_id,  # Preserve user_id
             "profile": profile_data,
             "current_step": "complete"
         }

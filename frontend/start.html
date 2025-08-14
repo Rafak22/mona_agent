@@ -57,27 +57,13 @@
     <script>
         // Check if user has completed onboarding
         const userId = localStorage.getItem('morvo_user_id');
+        const onboardingComplete = localStorage.getItem('morvo_onboarding_complete');
         
-        if (userId) {
-            // User exists, check if they have a profile
-                                                                         fetch(`https://sweet-stillness-production.up.railway.app/profile/status?user_id=${userId}`)
-                .then(response => response.json())
-                .then(data => {
-                    if (data.has_profile) {
-                        // User has profile, go to chat
-                        window.location.href = 'index.html';
-                    } else {
-                        // User exists but no profile, go to onboarding
-                        window.location.href = 'onboarding.html';
-                    }
-                })
-                .catch(error => {
-                    console.error('Error checking profile:', error);
-                    // On error, go to onboarding
-                    window.location.href = 'onboarding.html';
-                });
+        if (userId && onboardingComplete === 'true') {
+            // User exists and has completed onboarding - go to chat
+            window.location.href = 'index.html';
         } else {
-            // No user ID, go to onboarding
+            // No user ID or onboarding not complete - go to onboarding
             window.location.href = 'onboarding.html';
         }
     </script>

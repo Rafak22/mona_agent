@@ -2,190 +2,101 @@
 class MorvoApp {
     constructor() {
         this.userId = this.getUserId();
-        this.userProfile = {};
-        this.isOnboardingComplete = false;
-        
         this.initializeElements();
         this.bindEvents();
         this.checkUserStatus();
     }
 
-    // Initialize DOM elements
     initializeElements() {
         this.welcomeCard = document.getElementById('welcomeCard');
-        this.chatInterface = document.getElementById('chatInterface');
         this.startButton = document.getElementById('startButton');
-        this.loadingOverlay = document.getElementById('loadingOverlay');
-        
-        // Chat elements
+        this.chatInterface = document.getElementById('chatInterface');
         this.chatMessages = document.getElementById('chatMessages');
         this.chatInput = document.getElementById('chatInput');
         this.sendButton = document.getElementById('sendButton');
+        this.loadingOverlay = document.getElementById('loadingOverlay');
     }
 
-    // Bind event listeners
     bindEvents() {
         this.startButton.addEventListener('click', () => this.startOnboarding());
-        
-        // Chat events
-        this.sendButton.addEventListener('click', () => this.sendChatMessage());
+        this.sendButton.addEventListener('click', () => this.sendMessage());
         this.chatInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') this.sendChatMessage();
+            if (e.key === 'Enter') {
+                this.sendMessage();
+            }
         });
     }
 
-    // Get user ID from localStorage or generate new one
     getUserId() {
-        return localStorage.getItem('morvo_user_id') || this.generateUserId();
+        return localStorage.getItem('morvo_user_id') || 'user_' + Date.now();
     }
 
-    // Generate unique user ID
-    generateUserId() {
-        return 'user_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-    }
-
-    // Show loading overlay
-    showLoading() {
-        this.loadingOverlay.style.display = 'flex';
-    }
-
-    // Hide loading overlay
-    hideLoading() {
-        this.loadingOverlay.style.display = 'none';
-    }
-
-    // Update progress indicator
-    updateProgress(step) {
-        this.progressDots.forEach((dot, index) => {
-            dot.classList.remove('active', 'completed');
-            if (index + 1 < step) {
-                dot.classList.add('completed');
-            } else if (index + 1 === step) {
-                dot.classList.add('active');
-            }
-        });
-    }
-
-    // Display message
-    displayMessage(message) {
-        this.messageContent.textContent = message;
-    }
-
-    // Show text input
-    showTextInput(placeholder = 'اكتب إجابتك هنا...') {
-        this.textInputContainer.style.display = 'block';
-        this.optionsContainer.style.display = 'none';
-        this.textInput.placeholder = placeholder;
-        this.textInput.value = '';
-        this.textInput.focus();
-    }
-
-    // Show options
-    showOptions(options) {
-        this.textInputContainer.style.display = 'none';
-        this.optionsContainer.style.display = 'block';
-        this.optionsGrid.innerHTML = '';
+    checkUserStatus() {
+        const onboardingComplete = localStorage.getItem('morvo_onboarding_complete');
         
-        options.forEach(option => {
-            const button = document.createElement('button');
-            button.className = 'option-button';
-            button.textContent = option;
-            button.addEventListener('click', () => {
-                this.selectOption(option);
-            });
-            this.optionsGrid.appendChild(button);
-        });
-    }
-
-    // Select option
-    selectOption(option) {
-        // Remove previous selections
-        document.querySelectorAll('.option-button').forEach(btn => {
-            btn.classList.remove('selected');
-        });
-        
-        // Select current option
-        event.target.classList.add('selected');
-        this.textInput.value = option;
-    }
-
-    // Check user status and show appropriate interface
-    async checkUserStatus() {
-        if (!this.userId) {
-            this.showWelcomeCard();
-            return;
-        }
-
-        try {
-            const response = await fetch(`https://sweet-stillness-production.up.railway.app/profile/status?user_id=${this.userId}`);
-            const data = await response.json();
-            
-            if (data.has_profile) {
-                this.showChatInterface();
-            } else {
-                this.showWelcomeCard();
-            }
-        } catch (error) {
-            console.error('Error checking user status:', error);
+        if (onboardingComplete === 'true') {
+            // User completed onboarding - show chat interface
+            this.showChatInterface();
+        } else {
+            // User hasn't completed onboarding - show welcome card
             this.showWelcomeCard();
         }
     }
 
-    // Show welcome card
     showWelcomeCard() {
         this.welcomeCard.style.display = 'block';
         this.chatInterface.style.display = 'none';
     }
 
-    // Start onboarding (redirect to onboarding page)
     startOnboarding() {
+        // Redirect to onboarding page
         window.location.href = 'onboarding.html';
     }
 
-
-
-    // Show chat interface
     showChatInterface() {
         this.welcomeCard.style.display = 'none';
-        this.chatInterface.style.display = 'flex';
+        this.chatInterface.style.display = 'block';
         
-        // Add welcome message
-        this.addChatMessage('assistant', 'مرحباً! كيف يمكنني مساعدتك اليوم؟');
+        // Add welcome message for returning users
+        this.addMessage('assistant', 'أهلاً برجعتك! أنا MORVO 🤝 جاهز أساعدك. وش حاب نبدأ فيه اليوم؟');
+        
+        // Focus on chat input
+        this.chatInput.focus();
     }
 
-    // Add chat message
-    addChatMessage(role, content) {
+    addMessage(role, content) {
         const messageDiv = document.createElement('div');
-        messageDiv.className = `message ${role}`;
-        
-        const avatar = document.createElement('div');
-        avatar.className = `message-avatar ${role}`;
-        avatar.textContent = role === 'assistant' ? 'م' : 'أنت';
+        messageDiv.className = `message ${role}-message`;
         
         const messageContent = document.createElement('div');
         messageContent.className = 'message-content';
         messageContent.textContent = content;
         
-        messageDiv.appendChild(avatar);
         messageDiv.appendChild(messageContent);
-        
         this.chatMessages.appendChild(messageDiv);
+        
+        // Scroll to bottom
         this.chatMessages.scrollTop = this.chatMessages.scrollHeight;
     }
 
-    // Send chat message
-    async sendChatMessage() {
+    showLoading() {
+        this.loadingOverlay.style.display = 'flex';
+    }
+
+    hideLoading() {
+        this.loadingOverlay.style.display = 'none';
+    }
+
+    async sendMessage() {
         const message = this.chatInput.value.trim();
-        
         if (!message) return;
 
         // Add user message to chat
-        this.addChatMessage('user', message);
+        this.addMessage('user', message);
         this.chatInput.value = '';
 
         // Show loading
-        this.sendButton.disabled = true;
-        this.sendButton.textContent = 'جاري الإرسال...';
+        this.showLoading();
 
         try {
             const response = await fetch('https://sweet-stillness-production.up.railway.app/chat', {
@@ -200,39 +111,32 @@ class MorvoApp {
             });
 
             const data = await response.json();
-            
-            // Add assistant response
+            this.hideLoading();
+
             if (data.reply) {
-                this.addChatMessage('assistant', data.reply);
+                this.addMessage('assistant', data.reply);
+            } else {
+                this.addMessage('assistant', 'عذراً، حدث خطأ في الاتصال. يرجى المحاولة مرة أخرى.');
             }
 
         } catch (error) {
-            console.error('Error sending chat message:', error);
-            this.addChatMessage('assistant', 'عذراً، حدث خطأ في إرسال الرسالة. يرجى المحاولة مرة أخرى.');
-        } finally {
-            this.sendButton.disabled = false;
-            this.sendButton.innerHTML = '<span>إرسال</span>';
+            this.hideLoading();
+            console.error('Error sending message:', error);
+            this.addMessage('assistant', 'عذراً، حدث خطأ في الاتصال. يرجى المحاولة مرة أخرى.');
         }
     }
 
-    // Reset user (for testing)
     resetUser() {
+        // Clear localStorage and show welcome card
         localStorage.removeItem('morvo_user_id');
-        this.userId = this.generateUserId();
-        this.userProfile = {};
-        this.isOnboardingComplete = false;
+        localStorage.removeItem('morvo_onboarding_complete');
         this.showWelcomeCard();
     }
 }
 
-// Initialize the app when DOM is loaded
+// Initialize app when page loads
 document.addEventListener('DOMContentLoaded', () => {
     window.morvoApp = new MorvoApp();
-    
-    // Add reset functionality for testing (remove in production)
-    window.resetUser = () => {
-        window.morvoApp.resetUser();
-    };
 });
 
 // Add keyboard shortcuts
@@ -246,15 +150,9 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
-// Add service worker for offline functionality (optional)
-if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js')
-            .then(registration => {
-                console.log('SW registered: ', registration);
-            })
-            .catch(registrationError => {
-                console.log('SW registration failed: ', registrationError);
-            });
-    });
-}
+// Global function for reset (can be called from console)
+window.resetOnboarding = function() {
+    if (window.morvoApp) {
+        window.morvoApp.resetUser();
+    }
+};
