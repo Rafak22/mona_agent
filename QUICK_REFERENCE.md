@@ -107,7 +107,7 @@ python main.py
 ## 🧪 Testing
 ```bash
 # Test the system
-python test_enhanced_system.py
+python -c "from onboarding_graph import start_onboarding; print('Onboarding system ready')"
 
 # Test specific components
 python -c "from onboarding_graph import start_onboarding; print(start_onboarding('test_user'))"

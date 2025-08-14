@@ -3,37 +3,29 @@ import os
 from datetime import datetime
 from tools.supabase_client import supabase
 
-def debug_fetch_latest_mention():
+def _check_mentions_table_structure():
     """
-    Debug function to check Supabase connection and mentions table structure.
+    Internal function to check Supabase connection and mentions table structure.
     """
     try:
         response = supabase.table("mentions").select("*").limit(1).execute()
         
-        print("🔍 DEBUG: Supabase Response")
-        print(f"Status: {response.status_code if hasattr(response, 'status_code') else 'N/A'}")
-        
         if response.data:
             mention = response.data[0]
-            print("✅ Found mention data:")
-            print(f"Available columns: {list(mention.keys())}")
             return {
                 "success": True,
                 "data": mention,
                 "columns": list(mention.keys())
             }
         else:
-            print("⚠️ No mentions found in database")
             return {
                 "success": False,
                 "error": "No mentions found in database"
             }
     except Exception as e:
-        error_msg = f"🔥 Supabase Error: {str(e)}"
-        print(error_msg)
         return {
             "success": False,
-            "error": error_msg
+            "error": f"Supabase Error: {str(e)}"
         }
 
 def fetch_mentions_summary() -> str:
@@ -49,13 +41,13 @@ def fetch_mentions_summary() -> str:
     - published_date: date
     """
     try:
-        # First, run debug check
-        debug_result = debug_fetch_latest_mention()
-        if not debug_result["success"]:
-            return f"⚠️ خطأ في الاتصال: {debug_result['error']}"
+        # First, check table structure
+        table_check = _check_mentions_table_structure()
+        if not table_check["success"]:
+            return f"⚠️ خطأ في الاتصال: {table_check['error']}"
 
-        # If debug successful, try actual fetch with correct columns
-        available_columns = debug_result.get("columns", [])
+        # If check successful, try actual fetch with correct columns
+        available_columns = table_check.get("columns", [])
         
         # Determine which order column to use
         order_column = (

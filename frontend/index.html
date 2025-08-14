@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>مورفو - مساعدك الذكي في التسويق</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <!-- Onboarding Card -->
+        <div class="onboarding-card" id="onboardingCard">
+            <!-- Header -->
+            <div class="header">
+                <h1 class="main-title">مورفو</h1>
+                <p class="subtitle">مساعدك الذكي في التسويق</p>
+            </div>
+
+            <!-- Progress Indicator -->
+            <div class="progress-indicator">
+                <div class="progress-dot active" data-step="1"></div>
+                <div class="progress-dot" data-step="2"></div>
+                <div class="progress-dot" data-step="3"></div>
+                <div class="progress-dot" data-step="4"></div>
+                <div class="progress-dot" data-step="5"></div>
+                <div class="progress-dot" data-step="6"></div>
+                <div class="progress-dot" data-step="7"></div>
+                <div class="progress-dot" data-step="8"></div>
+            </div>
+
+            <!-- Content Area -->
+            <div class="content-area">
+                <!-- Display/Output Box -->
+                <div class="display-box" id="displayBox">
+                    <div class="message-content" id="messageContent">
+                        مرحباً! أنا مورفو، مساعدك الذكي في التسويق. دعنا نبدأ بالتعارف...
+                    </div>
+                </div>
+
+                <!-- Input Area -->
+                <div class="input-area" id="inputArea">
+                    <!-- Text Input -->
+                    <div class="text-input-container" id="textInputContainer">
+                        <input type="text" id="textInput" placeholder="اكتب إجابتك هنا..." class="text-input">
+                    </div>
+
+                    <!-- Options Container -->
+                    <div class="options-container" id="optionsContainer" style="display: none;">
+                        <div class="options-grid" id="optionsGrid">
+                            <!-- Options will be dynamically added here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Button -->
+            <div class="action-area">
+                <button class="next-button" id="nextButton">
+                    <span class="button-icon">→</span>
+                    <span class="button-text">التالي</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Chat Interface (Hidden initially) -->
+        <div class="chat-interface" id="chatInterface" style="display: none;">
+            <div class="chat-header">
+                <h2>مورفو</h2>
+                <p>مساعدك الذكي في التسويق</p>
+            </div>
+            
+            <div class="chat-messages" id="chatMessages">
+                <!-- Chat messages will appear here -->
+            </div>
+            
+            <div class="chat-input-area">
+                <input type="text" id="chatInput" placeholder="اكتب رسالتك هنا..." class="chat-input">
+                <button class="send-button" id="sendButton">
+                    <span>إرسال</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Loading Overlay -->
+        <div class="loading-overlay" id="loadingOverlay" style="display: none;">
+            <div class="loading-spinner"></div>
+            <p>جاري التحميل...</p>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

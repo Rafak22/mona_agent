@@ -258,7 +258,7 @@ mona_agent/
 python -m pytest tests/
 
 # Run specific test
-python test_enhanced_system.py
+python -c "from onboarding_graph import start_onboarding; print('Onboarding system ready')"
 ```
 
 ## Support and Maintenance
