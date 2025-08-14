@@ -61,3 +61,4 @@ def log_turn_via_rpc(
         supabase.rpc("log_turn", payload).execute()
     except Exception as e:
         print(f"⚠️ log_turn RPC error: {e}")
+        # Continue execution even if logging fails
