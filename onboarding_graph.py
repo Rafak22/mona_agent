@@ -151,6 +151,8 @@ def validate_goals(goals: str) -> tuple[bool, List[str]]:
 # ---------- Smart Onboarding Nodes ----------
 def n_smart_intro(state: OBState) -> Dict[str, Any]:
     """Smart introduction with personalized greeting"""
+    user_id = state.get("user_id")  # Preserve user_id
+    
     if "resume" in state:
         user_input = str(state["resume"])
         is_valid, result = validate_name(user_input)
@@ -166,6 +168,7 @@ def n_smart_intro(state: OBState) -> Dict[str, Any]:
             )
             
             return {
+                "user_id": user_id,  # Preserve user_id
                 "user_name": result,
                 "profile": profile_data,
                 "ai_insights": welcome_msg,
@@ -173,6 +176,7 @@ def n_smart_intro(state: OBState) -> Dict[str, Any]:
             }
         else:
             return {
+                "user_id": user_id,  # Preserve user_id
                 "ui": {
                     "ui_type": "input",
                     "message": f"❌ {result}\n\nحاول مرة أخرى. اكتب اسمك الأول فقط:",
@@ -193,6 +197,7 @@ def n_smart_intro(state: OBState) -> Dict[str, Any]:
     )
     
     return {
+        "user_id": user_id,  # Preserve user_id
         "ui": {
             "ui_type": "input",
             "message": greeting,
@@ -206,6 +211,7 @@ def n_smart_role(state: OBState) -> Dict[str, Any]:
     """Smart role selection with contextual options"""
     profile_data = state.get("profile", {})
     user_name = profile_data.get("user_name", "ضيفنا الكريم")
+    user_id = state.get("user_id")  # Preserve user_id
     
     # Personalized role options based on context
     role_options = [
@@ -231,6 +237,7 @@ def n_smart_role(state: OBState) -> Dict[str, Any]:
         )
         
         return {
+            "user_id": user_id,  # Preserve user_id
             "profile": profile_data,
             "ai_insights": role_insight,
             "current_step": "industry"
@@ -239,6 +246,7 @@ def n_smart_role(state: OBState) -> Dict[str, Any]:
     message = f"تشرفنا يا {user_name}! 🎯\n\nوش دورك في العمل؟ اختر الدور الأقرب ليك:"
     
     return {
+        "user_id": user_id,  # Preserve user_id
         "ui": {
             "ui_type": "options",
             "message": message,
@@ -513,6 +521,7 @@ def n_complete_onboarding(state: OBState) -> Dict[str, Any]:
     """Complete onboarding with personalized summary"""
     profile_data = state.get("profile", {})
     user_name = profile_data.get("user_name", "ضيفنا الكريم")
+    user_id = state.get("user_id")  # Preserve user_id
     
     # Save to database
     _save_profile_to_db(state)
@@ -527,6 +536,7 @@ def n_complete_onboarding(state: OBState) -> Dict[str, Any]:
     final_message = f"تم يا {user_name}! ✅\n\n{completion_msg}\n\n🎉 الآن اسألني أي شيء في التسويق وبعطيك توصيات عملية ومخصصة ليك!"
     
     return {
+        "user_id": user_id,  # Preserve user_id
         "ui": {
             "ui_type": "input",
             "message": final_message,

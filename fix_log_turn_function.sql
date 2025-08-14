@@ -1,5 +1,6 @@
 -- Fix for the log_turn RPC function in Supabase
 -- This fixes the "column reference 'conversation_id' is ambiguous" error
+-- AND the "primary_goals type mismatch" error
 
 -- Drop the existing function if it exists
 DROP FUNCTION IF EXISTS log_turn(
@@ -50,7 +51,7 @@ BEGIN
         updated_at = NOW()
     WHERE id = p_conversation_id;
     
-    -- Upsert profile data
+    -- Upsert profile data with proper type casting for primary_goals
     INSERT INTO profiles (
         user_id,
         user_role,
@@ -67,7 +68,12 @@ BEGIN
         p_profile->>'company_size',
         p_profile->>'website_status',
         p_profile->>'website_url',
-        COALESCE(p_profile->'primary_goals', '[]'::jsonb),
+        CASE 
+            WHEN p_profile->'primary_goals' IS NULL THEN '{}'::text[]
+            WHEN jsonb_typeof(p_profile->'primary_goals') = 'array' THEN 
+                ARRAY(SELECT jsonb_array_elements_text(p_profile->'primary_goals'))
+            ELSE '{}'::text[]
+        END,
         p_profile->>'budget_range'
     )
     ON CONFLICT (user_id) DO UPDATE SET
