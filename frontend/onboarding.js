@@ -110,7 +110,7 @@ class MorvoOnboarding {
     async startOnboarding() {
         this.showLoading();
         try {
-            const response = await fetch('https://monaagent-production-123a.up.railway.app/onboarding/start', {
+            const response = await fetch('https://sweet-stillness-production.up.railway.app/onboarding/start', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -160,7 +160,7 @@ class MorvoOnboarding {
 
         this.showLoading();
         try {
-            const response = await fetch('https://monaagent-production-123a.up.railway.app/onboarding/step', {
+            const response = await fetch('https://sweet-stillness-production.up.railway.app/onboarding/step', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
