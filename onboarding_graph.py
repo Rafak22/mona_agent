@@ -1,11 +1,17 @@
 # onboarding_graph.py
-from typing import TypedDict, Literal, Optional, List, Dict, Any
+from typing import TypedDict, Literal, Optional, List, Dict, Any, Annotated
 from typing_extensions import NotRequired
 import os, re
 from langgraph.graph import StateGraph, START, END
 import uuid
 from langgraph.types import Interrupt
 from langgraph.checkpoint.memory import InMemorySaver
+from langgraph.prebuilt import ToolNode
+from langchain_core.messages import HumanMessage, AIMessage
+from langchain_openai import ChatOpenAI
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # ---------- Supabase (safe: if not configured, saving is skipped) ----------
 try:
@@ -34,13 +40,18 @@ _ALLOWED_DB_KEYS = {
     "website_url",
     "primary_goals",
     "budget_range",
+    "marketing_experience",
+    "target_audience",
+    "current_challenges",
 }
 
 # ---------- State schema ----------
 class UIBlock(TypedDict, total=False):
-    ui_type: Literal["options", "input"]
+    ui_type: Literal["options", "input", "multi_select", "rating"]
     message: str
     options: NotRequired[List[str]]
+    validation_rules: NotRequired[Dict[str, Any]]
+    context: NotRequired[str]
 
 class OBState(TypedDict, total=False):
     user_id: str
@@ -49,236 +60,603 @@ class OBState(TypedDict, total=False):
     user_name: Optional[str]
     preferred_name: Optional[str]
     preferred_choice: Optional[str]
+    conversation_history: List[Dict[str, str]]
+    current_step: str
+    step_data: Dict[str, Any]
+    ai_insights: Optional[str]
 
-# ---------- Helpers ----------
-def ask_step(node: str, step: int, total: int, message: str,
-             *, options: Optional[List[str]] = None,
-             ui_type: Literal["options","input"] = "input") -> Dict[str, Any]:
-    payload: UIBlock = {"ui_type": ui_type, "message": message}
-    if options:
-        payload["options"] = options
-    # Provide progress/state info for the FE
-    payload["state_updates"] = {"node": node, "step": step, "total": total}
-    return {"ui": payload}
+# ---------- AI Assistant for Smart Responses ----------
+llm = ChatOpenAI(
+    model="gpt-4o-mini",
+    temperature=0.7,
+    api_key=os.getenv("OPENAI_API_KEY")
+)
 
-_AR = re.compile(r"^[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\s\-']{2,40}$")
-_LAT = re.compile(r"^[A-Za-z\s\-']{2,40}$")
-_NON_NAMES = {
-    "ايه", "أيه", "ايوه", "أيوه", "نعم", "لا", "تمام", "طيب", "اوكي", "أوكي", "اوكيه",
-    "مرحبا", "اهلا", "أهلا", "هلا", "thanks", "thank you", "ok", "okay"
-}
-
-def _clean_name(s: str) -> Optional[str]:
-    s = (s or "").strip()
-    if not s:
-        print(f"[onboarding] name validation: empty input")
-        return None
-    low = s.lower()
-    if low in _NON_NAMES:
-        print(f"[onboarding] name validation: blocked '{s}' (in _NON_NAMES)")
-        return None
-    if _AR.match(s) or _LAT.match(s):
-        result = s if not s.isascii() else s.title()
-        print(f"[onboarding] name validation: accepted '{s}' -> '{result}'")
-        return result
-    print(f"[onboarding] name validation: rejected '{s}' (no regex match)")
-    return None
-
-_URL_RE = re.compile(r"^https?://[^\s/$.?#].[^\s]*$", re.IGNORECASE)
-def _clean_url(s: str) -> Optional[str]:
-    s = (s or "").strip()
-    return s if s and _URL_RE.match(s) else None
-
-def _to_uuid_str(user_id: str) -> str:
-    """Return a valid UUID string for any incoming user_id.
-    If it's already a UUID, keep it; otherwise, derive a stable UUIDv5.
+def generate_smart_response(context: str, user_input: str, profile_data: Dict[str, Any]) -> str:
+    """Generate contextual responses based on user input and profile data"""
+    system_prompt = f"""
+    You are MORVO, a smart marketing assistant for the Saudi market. You're helping with user onboarding.
+    
+    Context: {context}
+    Current Profile Data: {profile_data}
+    User Input: {user_input}
+    
+    Respond in Arabic, be friendly and helpful. Provide personalized insights based on the user's profile.
+    Keep responses concise but informative.
     """
+    
+    try:
+        response = llm.invoke([
+            HumanMessage(content=f"Context: {context}\nProfile: {profile_data}\nUser: {user_input}")
+        ])
+        return response.content
+    except Exception as e:
+        print(f"[AI] Error generating response: {e}")
+        return "شكراً لك! دعنا نكمل مع الخطوة التالية."
+
+# ---------- Smart Validation Functions ----------
+def validate_name(name: str) -> tuple[bool, str]:
+    """Smart name validation with Arabic and Latin support"""
+    name = name.strip()
+    if not name:
+        return False, "الاسم مطلوب"
+    
+    # Check for common non-name responses
+    non_names = {"ايه", "أيه", "ايوه", "أيوه", "نعم", "لا", "تمام", "طيب", "اوكي", "أوكي", "اوكيه",
+                "مرحبا", "اهلا", "أهلا", "هلا", "thanks", "thank you", "ok", "okay", "hello", "hi"}
+    
+    if name.lower() in non_names:
+        return False, "هذا ليس اسماً. يرجى كتابة اسمك الأول"
+    
+    # Arabic name pattern
+    arabic_pattern = r"^[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\s\-']{2,40}$"
+    # Latin name pattern
+    latin_pattern = r"^[A-Za-z\s\-']{2,40}$"
+    
+    if re.match(arabic_pattern, name) or re.match(latin_pattern, name):
+        return True, name.title() if name.isascii() else name
+    
+    return False, "الاسم غير صحيح. يرجى كتابة اسم صحيح"
+
+def validate_url(url: str) -> tuple[bool, str]:
+    """Smart URL validation"""
+    url = url.strip()
+    if not url:
+        return False, "الرابط مطلوب"
+    
+    # Basic URL pattern
+    url_pattern = r"^https?://[^\s/$.?#].[^\s]*$"
+    if re.match(url_pattern, url, re.IGNORECASE):
+        return True, url
+    
+    return False, "الرابط غير صحيح. مثال: https://example.com"
+
+def validate_goals(goals: str) -> tuple[bool, List[str]]:
+    """Smart goals validation and parsing"""
+    goals = goals.strip()
+    if not goals:
+        return False, []
+    
+    # Split by common separators
+    goal_list = [g.strip() for g in re.split(r"[،,;]", goals) if g.strip()]
+    
+    if len(goal_list) < 1:
+        return False, []
+    
+    if len(goal_list) > 5:
+        return False, goal_list[:5]  # Limit to 5 goals
+    
+    return True, goal_list
+
+# ---------- Smart Onboarding Nodes ----------
+def n_smart_intro(state: OBState) -> Dict[str, Any]:
+    """Smart introduction with personalized greeting"""
+    if "resume" in state:
+        user_input = str(state["resume"])
+        is_valid, result = validate_name(user_input)
+        
+        if is_valid:
+            # Generate personalized welcome
+            profile_data = state.get("profile", {})
+            profile_data["user_name"] = result
+            welcome_msg = generate_smart_response(
+                "User provided their name during onboarding",
+                f"My name is {result}",
+                profile_data
+            )
+            
+            return {
+                "user_name": result,
+                "profile": profile_data,
+                "ai_insights": welcome_msg,
+                "current_step": "role"
+            }
+        else:
+            return {
+                "ui": {
+                    "ui_type": "input",
+                    "message": f"❌ {result}\n\nحاول مرة أخرى. اكتب اسمك الأول فقط:",
+                    "validation_rules": {"type": "name", "min_length": 2, "max_length": 40},
+                    "context": "name_validation"
+                }
+            }
+    
+    # First time greeting
+    greeting = (
+        "حياك الله! أنا MORVO 🤝 مستشارتك الذكية للتسويق في السوق السعودي 🇸🇦\n\n"
+        "أقدر أساعدك في:\n"
+        "• تحليل الحملات التسويقية 📊\n"
+        "• متابعة سمعة علامتك التجارية 🏢\n"
+        "• تحسين الظهور في محركات البحث (SEO) 🔍\n"
+        "• وضع استراتيجيات تحقق عائد واضح 💰\n\n"
+        "خلّينا نبدأ بالتعارف… وش اسمك الأول؟"
+    )
+    
+    return {
+        "ui": {
+            "ui_type": "input",
+            "message": greeting,
+            "validation_rules": {"type": "name", "min_length": 2, "max_length": 40},
+            "context": "introduction"
+        },
+        "current_step": "intro"
+    }
+
+def n_smart_role(state: OBState) -> Dict[str, Any]:
+    """Smart role selection with contextual options"""
+    profile_data = state.get("profile", {})
+    user_name = profile_data.get("user_name", "ضيفنا الكريم")
+    
+    # Personalized role options based on context
+    role_options = [
+        "👨‍💼 مدير/ة تسويق",
+        "🎯 مختص/ة تسويق",
+        "💼 مالك/ـة مشروع",
+        "🚀 رائد/ة أعمال",
+        "🏢 مدير/ة عام",
+        "📈 محلل/ة بيانات",
+        "🎨 مصمم/ة إبداعي",
+        "أخرى"
+    ]
+    
+    if "resume" in state:
+        selected_role = str(state["resume"])
+        profile_data["user_role"] = selected_role
+        
+        # Generate role-specific insights
+        role_insight = generate_smart_response(
+            f"User selected role: {selected_role}",
+            f"I am a {selected_role}",
+            profile_data
+        )
+        
+        return {
+            "profile": profile_data,
+            "ai_insights": role_insight,
+            "current_step": "industry"
+        }
+    
+    message = f"تشرفنا يا {user_name}! 🎯\n\nوش دورك في العمل؟ اختر الدور الأقرب ليك:"
+    
+    return {
+        "ui": {
+            "ui_type": "options",
+            "message": message,
+            "options": role_options,
+            "context": "role_selection"
+        },
+        "current_step": "role"
+    }
+
+def n_smart_industry(state: OBState) -> Dict[str, Any]:
+    """Smart industry input with suggestions"""
+    profile_data = state.get("profile", {})
+    user_role = profile_data.get("user_role", "")
+    
+    if "resume" in state:
+        industry = str(state["resume"]).strip()
+        if len(industry) < 3:
+            return {
+                "ui": {
+                    "ui_type": "input",
+                    "message": "❌ النشاط قصير جداً. اكتب نشاط شركتكم بالتفصيل:",
+                    "validation_rules": {"min_length": 3, "max_length": 100},
+                    "context": "industry_validation"
+                }
+            }
+        
+        profile_data["industry"] = industry
+        
+        # Generate industry-specific insights
+        industry_insight = generate_smart_response(
+            f"User works in {industry} industry",
+            f"My company is in {industry}",
+            profile_data
+        )
+        
+        return {
+            "profile": profile_data,
+            "ai_insights": industry_insight,
+            "current_step": "company_size"
+        }
+    
+    # Industry suggestions based on role
+    suggestions = {
+        "👨‍💼 مدير/ة تسويق": "مثال: تجارة إلكترونية، مطاعم، تعليم، تقنية، خدمات مالية",
+        "🎯 مختص/ة تسويق": "مثال: تسويق رقمي، إعلانات، علاقات عامة، تسويق مباشر",
+        "💼 مالك/ـة مشروع": "مثال: تجارة، صناعة، خدمات، استشارات",
+        "🚀 رائد/ة أعمال": "مثال: تقنية، تطبيقات، منصات رقمية، حلول مبتكرة"
+    }
+    
+    suggestion = suggestions.get(user_role, "مثال: تجارة إلكترونية، مطاعم، تعليم، تقنية، خدمات مالية")
+    
+    message = f"🏢 نشاط شركتكم إيش؟\n\n{suggestion}"
+    
+    return {
+        "ui": {
+            "ui_type": "input",
+            "message": message,
+            "validation_rules": {"min_length": 3, "max_length": 100},
+            "context": "industry_input"
+        },
+        "current_step": "industry"
+    }
+
+def n_smart_company_size(state: OBState) -> Dict[str, Any]:
+    """Smart company size selection"""
+    profile_data = state.get("profile", {})
+    
+    if "resume" in state:
+        size = str(state["resume"])
+        profile_data["company_size"] = size
+        return {
+            "profile": profile_data,
+            "current_step": "website_status"
+        }
+    
+    size_options = [
+        "👤 شخص واحد (فريلانسر)",
+        "👥 2–10 موظفين (شركة ناشئة)",
+        "🏢 11–50 موظف (شركة متوسطة)",
+        "🏗 51–200 موظف (شركة كبيرة)",
+        "🏭 200+ موظف (شركة عملاقة)"
+    ]
+    
+    message = "📊 كم حجم الشركة؟\n\nاختر الفئة الأقرب ليك:"
+    
+    return {
+        "ui": {
+            "ui_type": "options",
+            "message": message,
+            "options": size_options,
+            "context": "company_size"
+        },
+        "current_step": "company_size"
+    }
+
+def n_smart_website_status(state: OBState) -> Dict[str, Any]:
+    """Smart website status with conditional logic"""
+    profile_data = state.get("profile", {})
+    
+    if "resume" in state:
+        status = str(state["resume"])
+        has_website = status.startswith("✅") or status.startswith("🔧")
+        profile_data["website_status"] = "Yes" if has_website else "No"
+        
+        return {
+            "profile": profile_data,
+            "current_step": "website_url" if has_website else "goals"
+        }
+    
+    status_options = [
+        "✅ نعم – شغّال ومحسن",
+        "🔧 نعم – يحتاج تطوير وتحسين",
+        "🏗 تحت الإنشاء",
+        "❌ لا، ما عندي موقع"
+    ]
+    
+    message = "🌐 عندكم موقع إلكتروني؟\n\nاختر الحالة الأقرب ليك:"
+    
+    return {
+        "ui": {
+            "ui_type": "options",
+            "message": message,
+            "options": status_options,
+            "context": "website_status"
+        },
+        "current_step": "website_status"
+    }
+
+def n_smart_website_url(state: OBState) -> Dict[str, Any]:
+    """Smart website URL validation"""
+    profile_data = state.get("profile", {})
+    
+    if "resume" in state:
+        url = str(state["resume"])
+        is_valid, result = validate_url(url)
+        
+        if is_valid:
+            profile_data["website_url"] = result
+            return {
+                "profile": profile_data,
+                "current_step": "goals"
+            }
+        else:
+            return {
+                "ui": {
+                    "ui_type": "input",
+                    "message": f"❌ {result}\n\nحاول مرة أخرى:",
+                    "validation_rules": {"type": "url"},
+                    "context": "url_validation"
+                }
+            }
+    
+    message = "🔗 أرسل رابط الموقع\n\nمثال: https://example.com"
+    
+    return {
+        "ui": {
+            "ui_type": "input",
+            "message": message,
+            "validation_rules": {"type": "url"},
+            "context": "website_url"
+        },
+        "current_step": "website_url"
+    }
+
+def n_smart_goals(state: OBState) -> Dict[str, Any]:
+    """Smart goals collection with suggestions"""
+    profile_data = state.get("profile", {})
+    industry = profile_data.get("industry", "")
+    
+    if "resume" in state:
+        goals_input = str(state["resume"])
+        is_valid, goals_list = validate_goals(goals_input)
+        
+        if is_valid:
+            profile_data["primary_goals"] = goals_list
+            
+            # Generate goals-specific insights
+            goals_insight = generate_smart_response(
+                f"User goals: {', '.join(goals_list)}",
+                f"My marketing goals are: {goals_input}",
+                profile_data
+            )
+            
+            return {
+                "profile": profile_data,
+                "ai_insights": goals_insight,
+                "current_step": "budget"
+            }
+        else:
+            return {
+                "ui": {
+                    "ui_type": "input",
+                    "message": "❌ الأهداف غير واضحة. اكتب أهدافك مفصولة بفواصل:",
+                    "validation_rules": {"min_length": 5},
+                    "context": "goals_validation"
+                }
+            }
+    
+    # Industry-specific goal suggestions
+    goal_suggestions = {
+        "تجارة إلكترونية": "زيادة المبيعات، تحسين التحويلات، توسيع قاعدة العملاء",
+        "مطاعم": "زيادة الطلبات، تحسين تجربة العملاء، التوسع الجغرافي",
+        "تعليم": "زيادة التسجيلات، تحسين المحتوى التعليمي، بناء السمعة",
+        "تقنية": "زيادة المستخدمين، تحسين المنتج، التوسع في السوق"
+    }
+    
+    suggestion = goal_suggestions.get(industry, "زيادة الوعي، تحسين التحويلات، ترتيب SEO، بناء السمعة")
+    
+    message = f"🎯 وش أهم أهدافك التسويقية؟\n\nاكتبها مفصولة بفواصل (،)\nمثال: {suggestion}"
+    
+    return {
+        "ui": {
+            "ui_type": "input",
+            "message": message,
+            "validation_rules": {"min_length": 5, "max_length": 200},
+            "context": "goals_input"
+        },
+        "current_step": "goals"
+    }
+
+def n_smart_budget(state: OBState) -> Dict[str, Any]:
+    """Smart budget selection with recommendations"""
+    profile_data = state.get("profile", {})
+    company_size = profile_data.get("company_size", "")
+    
+    if "resume" in state:
+        budget = str(state["resume"])
+        profile_data["budget_range"] = budget
+        return {
+            "profile": profile_data,
+            "current_step": "complete"
+        }
+    
+    # Budget options based on company size
+    if "شخص واحد" in company_size:
+        budget_options = [
+            "أقل من 1,000 ريال",
+            "1,000–3,000 ريال",
+            "3,000–5,000 ريال",
+            "أكثر من 5,000 ريال"
+        ]
+    elif "2–10" in company_size:
+        budget_options = [
+            "أقل من 5,000 ريال",
+            "5,000–15,000 ريال",
+            "15,000–30,000 ريال",
+            "أكثر من 30,000 ريال"
+        ]
+    else:
+        budget_options = [
+            "أقل من 10,000 ريال",
+            "10,000–25,000 ريال",
+            "25,000–50,000 ريال",
+            "أكثر من 50,000 ريال",
+            "حسب المشروع",
+            "مو محددة"
+        ]
+    
+    message = "💰 كم تقريباً ميزانيتكم الشهرية للتسويق؟\n\nاختر الفئة المناسبة:"
+    
+    return {
+        "ui": {
+            "ui_type": "options",
+            "message": message,
+            "options": budget_options,
+            "context": "budget_selection"
+        },
+        "current_step": "budget"
+    }
+
+def n_complete_onboarding(state: OBState) -> Dict[str, Any]:
+    """Complete onboarding with personalized summary"""
+    profile_data = state.get("profile", {})
+    user_name = profile_data.get("user_name", "ضيفنا الكريم")
+    
+    # Save to database
+    _save_profile_to_db(state)
+    
+    # Generate personalized completion message
+    completion_msg = generate_smart_response(
+        "Onboarding completed successfully",
+        f"Profile completed for {user_name}",
+        profile_data
+    )
+    
+    final_message = f"تم يا {user_name}! ✅\n\n{completion_msg}\n\n🎉 الآن اسألني أي شيء في التسويق وبعطيك توصيات عملية ومخصصة ليك!"
+    
+    return {
+        "ui": {
+            "ui_type": "input",
+            "message": final_message,
+            "context": "completion"
+        },
+        "current_step": "complete"
+    }
+
+# ---------- Graph wiring ----------
+def create_onboarding_graph():
+    """Create the smart onboarding graph"""
+    builder = StateGraph(OBState)
+    
+    # Add nodes
+    builder.add_node("intro", n_smart_intro)
+    builder.add_node("role", n_smart_role)
+    builder.add_node("industry", n_smart_industry)
+    builder.add_node("company_size", n_smart_company_size)
+    builder.add_node("website_status", n_smart_website_status)
+    builder.add_node("website_url", n_smart_website_url)
+    builder.add_node("goals", n_smart_goals)
+    builder.add_node("budget", n_smart_budget)
+    builder.add_node("complete", n_complete_onboarding)
+    
+    # Add edges
+    builder.add_edge(START, "intro")
+    builder.add_edge("intro", "role")
+    builder.add_edge("role", "industry")
+    builder.add_edge("industry", "company_size")
+    builder.add_edge("company_size", "website_status")
+    
+    # Conditional edges
+    def route_after_website_status(state: OBState) -> str:
+        has_website = state.get("profile", {}).get("website_status") == "Yes"
+        return "website_url" if has_website else "goals"
+    
+    builder.add_conditional_edges("website_status", route_after_website_status, ["website_url", "goals"])
+    builder.add_edge("website_url", "goals")
+    builder.add_edge("goals", "budget")
+    builder.add_edge("budget", "complete")
+    builder.add_edge("complete", END)
+    
+    return builder.compile(checkpointer=InMemorySaver())
+
+# Create graph instance
+graph = create_onboarding_graph()
+
+# ---------- Helper functions ----------
+def _to_uuid_str(user_id: str) -> str:
+    """Return a valid UUID string for any incoming user_id."""
     try:
         return str(uuid.UUID(str(user_id)))
     except Exception:
         return str(uuid.uuid5(uuid.NAMESPACE_URL, f"onb:{user_id}"))
 
 def _save_profile_to_db(state: OBState) -> None:
+    """Save profile data to Supabase"""
     if not _sb:
+        print(f"[onboarding] Supabase not available, skipping save")
         return
-    p = state.get("profile", {}) or {}
-    payload = {k: v for k, v in p.items() if k in _ALLOWED_DB_KEYS}
-    if state.get("user_id"):
-        payload["user_id"] = _to_uuid_str(state["user_id"])  # coerce to UUID
+    
     try:
+        profile_data = state.get("profile", {})
+        payload = {k: v for k, v in profile_data.items() if k in _ALLOWED_DB_KEYS}
+        if state.get("user_id"):
+            payload["user_id"] = _to_uuid_str(state["user_id"])
+        
         _sb.table("profiles").upsert(payload, on_conflict="user_id").execute()
         print(f"[onboarding] saved profile for {state.get('user_id')} -> {payload.get('user_id')}")
     except Exception as e:
-        print(f"[supabase] upsert skipped: {e}")
+        print(f"[onboarding] failed to save profile: {e}")
 
-def _display_name(state: OBState) -> str:
-    return state.get("preferred_name") or state.get("user_name") or "ضيفنا الكريم"
-
-# ---------- Nodes (Arabic, Saudi-friendly) ----------
-def n_intro_name(state: OBState) -> Dict[str, Any]:
-    msg = (
-        "حياك الله! أنا MORVO 🤝 مستشارتك الذكية للتسويق في السوق السعودي 🇸🇦.\n"
-        "أقدر أساعدك في تحليل الحملات، متابعة سمعة علامتك، تحسين الظهور في قوقل (SEO)، "
-        "ووضع استراتيجيات تحقق عائد واضح.\n\n"
-        "خلّينا نبدأ بالتعارف… وش اسمك الأول؟"
-    )
-    # Check if we have a resume value (user input)
-    if "resume" in state:
-        raw_input = str(state["resume"])
-        name = _clean_name(raw_input)
-        print(f"[onboarding] name validation: input='{raw_input}' -> cleaned='{name}'")
-        if name:
-            return {"user_name": name}
-        # Invalid name, ask again
-        error_msg = "اسم غير واضح. اكتب اسمك الأول فقط (مثال: سارة، محمد، Laila). تجنب كلمات مثل: ايه، نعم، اوكي."
-        return ask_step("intro_name", 1, 8, error_msg, ui_type="input")
-    
-    # First time, show initial message
-    return ask_step("intro_name", 1, 8, msg, ui_type="input")
-
-def n_preferred_choice(state: OBState) -> Dict[str, Any]:
-    nm = state.get("user_name", "")
-    choice = ask(
-        f"تشرفنا يا {nm}! تفضّل أناديك بنفس الاسم أم اسم مختلف؟",
-        options=["إيّه، نفس الاسم", "أفضّل اسم مختلف"],
-        ui_type="options",
-    )
-    return {"preferred_choice": str(choice)}
-
-def n_preferred_input(state: OBState) -> Dict[str, Any]:
-    nm = state.get("user_name", "")
-    val = ask(f"اكتب الاسم اللي تحب نناديك فيه (أو اكتب {nm}):", ui_type="input")
-    pn = _clean_name(str(val)) or nm
-    return {"preferred_name": pn}
-
-def n_role(state: OBState) -> Dict[str, Any]:
-    val = ask_step("role", 2, 8, "وش دورك في العمل؟",
-                   options=["مدير/ة تسويق", "مختص/ة تسويق", "مالك/ـة مشروع", "رائد/ة أعمال", "مدير/ة عام", "أخرى"],
-                   ui_type="options")
-    prof = state.get("profile", {})
-    prof["user_role"] = str(val)
-    return {"profile": prof}
-
-def n_industry(state: OBState) -> Dict[str, Any]:
-    val = ask_step("industry", 3, 8, "نشاط شركتكم إيش؟ (مثال: تجارة إلكترونية، مطاعم، تعليم، تقنية…)", ui_type="input")
-    prof = state.get("profile", {})
-    prof["industry"] = str(val).strip()
-    return {"profile": prof}
-
-def n_company_size(state: OBState) -> Dict[str, Any]:
-    val = ask_step("company_size", 4, 8, "كم حجم الشركة؟",
-                   options=["👤 شخص واحد (فريلانسر)", "👥 2–10 موظفين", "🏢 11–50 موظف", "🏗 51+ موظف"],
-                   ui_type="options")
-    prof = state.get("profile", {})
-    prof["company_size"] = str(val)
-    return {"profile": prof}
-
-def n_website_status(state: OBState) -> Dict[str, Any]:
-    val = ask_step("website_status", 5, 8, "عندكم موقع إلكتروني؟",
-                   options=["✅ نعم – شغّال", "🔧 نعم – يحتاج تطوير", "🏗 تحت الإنشاء", "❌ لا"],
-                   ui_type="options")
-    prof = state.get("profile", {})
-    prof["website_status"] = "Yes" if str(val).startswith("✅") or str(val).startswith("🔧") else "No"
-    return {"profile": prof}
-
-def n_website_url(state: OBState) -> Dict[str, Any]:
-    msg = "أرسل رابط الموقع (https://…)"
-    # Check if we have a resume value (user input)
-    if "resume" in state:
-        url = _clean_url(str(state["resume"]))
-        if url:
-            prof = state.get("profile", {})
-            prof["website_url"] = url
-            return {"profile": prof}
-        # Invalid URL, ask again
-        error_msg = "الرابط غير صالح. مثال: https://example.com"
-        return ask_step("website_url", 6, 8, error_msg, ui_type="input")
-    
-    # First time, show initial message
-    return ask_step("website_url", 6, 8, msg, ui_type="input")
-
-def n_goals(state: OBState) -> Dict[str, Any]:
-    msg = "وش أهم أهدافك التسويقية؟ اكتبها مفصولة بفواصل (،). مثال: زيادة الوعي، تحسين التحويلات، ترتيب SEO…"
-    val = ask_step("goals", 7, 8, msg, ui_type="input")
-    items = [x.strip() for x in re.split(r"[،,]", str(val)) if x.strip()]
-    prof = state.get("profile", {})
-    prof["primary_goals"] = items or []
-    return {"profile": prof}
-
-def n_budget(state: OBState) -> Dict[str, Any]:
-    val = ask_step("budget", 8, 8, "كم تقريباً ميزانيتكم الشهرية للتسويق؟",
-                   options=["أقل من 5,000 ريال", "5,000–15,000 ريال", "15,000–50,000 ريال", "أكثر من 50,000 ريال", "حسب المشروع", "مو محددة"],
-                   ui_type="options")
-    prof = state.get("profile", {})
-    prof["budget_range"] = str(val)
-    return {"profile": prof}
-
-def n_save_and_finish(state: OBState) -> Dict[str, Any]:
-    _save_profile_to_db(state)  # writes only allowed columns (safe no-op if sb not set)
-    dn = _display_name(state)
-    # final informational message (your FE can ignore; it's here for completeness)
-    state["ui"] = {"ui_type": "input",
-                   "message": f"تم يا {dn}! ✅ الآن اسألني أي شيء في التسويق وبعطيك توصيات عملية.",
-                   "state_updates": {"node": "save", "step": 8, "total": 8}}
-    return {}
-
-# ---------- Graph wiring ----------
-_builder = StateGraph(OBState)
-_builder.add_node("intro_name", n_intro_name)
-_builder.add_node("role", n_role)
-_builder.add_node("industry", n_industry)
-_builder.add_node("company_size", n_company_size)
-_builder.add_node("website_status", n_website_status)
-_builder.add_node("website_url", n_website_url)
-_builder.add_node("goals", n_goals)
-_builder.add_node("budget", n_budget)
-_builder.add_node("save", n_save_and_finish)
-
-_builder.add_edge(START, "intro_name")
-_builder.add_edge("intro_name", "role")
-_builder.add_edge("role", "industry")
-_builder.add_edge("industry", "company_size")
-_builder.add_edge("company_size", "website_status")
-
-def _branch_site(state: OBState) -> str:
-    return "website_url" if state.get("profile", {}).get("website_status") == "Yes" else "goals"
-
-_builder.add_conditional_edges("website_status", _branch_site, ["website_url", "goals"])
-_builder.add_edge("website_url", "goals")
-_builder.add_edge("goals", "budget")
-_builder.add_edge("budget", "save")
-_builder.add_edge("save", END)
-
-_memory = InMemorySaver()
-graph = _builder.compile(checkpointer=_memory)
-
-# ---------- API helpers (used by main.py endpoints) ----------
 def _cfg(user_id: str) -> Dict[str, Any]:
     return {"configurable": {"thread_id": f"onb:{user_id}"}}
 
 def _current_ui(user_id: str) -> UIBlock:
+    """Get current UI state from graph"""
     snap = graph.get_state(_cfg(user_id))
     vals = getattr(snap, "values", {}) or {}
     ui = vals.get("_interrupt_")
-    if ui: return ui
-    # fallback for older langgraph
+    if ui:
+        return ui
+    
+    # Fallback for older langgraph
     for t in getattr(snap, "tasks", []) or []:
         for intr in getattr(t, "interrupts", []) or []:
-            if hasattr(intr, "value"): return intr.value
-            if isinstance(intr, dict) and "value" in intr: return intr["value"]
+            if hasattr(intr, "value"):
+                return intr.value
+            if isinstance(intr, dict) and "value" in intr:
+                return intr["value"]
+    
     return {"ui_type": "input", "message": "…"}
 
+# ---------- API functions ----------
 def start_onboarding(user_id: str) -> Dict[str, Any]:
-    initial: OBState = {"user_id": user_id, "profile": {}}
-    print(f"[onboarding] starting for user_id: {user_id}")
-    graph.invoke(initial, _cfg(user_id))  # runs until first interrupt
-    return {"conversation_id": f"onb:{user_id}", "done": False, "ui": _current_ui(user_id)}
+    """Start the smart onboarding process"""
+    initial: OBState = {
+        "user_id": user_id,
+        "profile": {},
+        "conversation_history": [],
+        "current_step": "intro",
+        "step_data": {}
+    }
+    
+    print(f"[onboarding] starting smart onboarding for user_id: {user_id}")
+    graph.invoke(initial, _cfg(user_id))
+    
+    return {
+        "conversation_id": f"onb:{user_id}",
+        "done": False,
+        "ui": _current_ui(user_id)
+    }
 
 def resume_onboarding(user_id: str, value: Any) -> Dict[str, Any]:
-    print(f"[onboarding] resuming for user_id: {user_id} with value: {value}")
+    """Resume onboarding with user input"""
+    print(f"[onboarding] resuming smart onboarding for user_id: {user_id} with value: {value}")
+    
     graph.invoke({"resume": value}, _cfg(user_id))
     snap = graph.get_state(_cfg(user_id))
+    
     if snap.next is None:
-        print(f"[onboarding] completed for user_id: {user_id}")
-        return {"conversation_id": f"onb:{user_id}", "done": True, "ui": None}
-    return {"conversation_id": f"onb:{user_id}", "done": False, "ui": _current_ui(user_id)}
+        print(f"[onboarding] smart onboarding completed for user_id: {user_id}")
+        return {
+            "conversation_id": f"onb:{user_id}",
+            "done": True,
+            "ui": None
+        }
+    
+    return {
+        "conversation_id": f"onb:{user_id}",
+        "done": False,
+        "ui": _current_ui(user_id)
+    }
