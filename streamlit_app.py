@@ -20,7 +20,7 @@ load_dotenv()
 logging.basicConfig(level=logging.INFO)
 
 # Initialize Supabase client
-_sb = supabase if os.getenv("SUPABASE_URL") and os.getenv("SUPABASE_ANON_KEY") else None
+_sb = supabase
 
 # Page configuration
 st.set_page_config(
