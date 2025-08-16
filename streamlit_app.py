@@ -479,8 +479,7 @@ def main():
                             "content": response
                         })
                         
-                        # Clear input and rerun
-                        st.session_state.chat_input = ""
+                        # Rerun to update the interface
                         st.rerun()
 
 if __name__ == "__main__":
