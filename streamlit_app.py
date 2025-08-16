@@ -367,6 +367,11 @@ def main():
             st.session_state.chat_history = []
             st.session_state.onboarding_state = None
             st.session_state.profile_complete = False
+            # Add a welcome message to chat history
+            st.session_state.chat_history.append({
+                "role": "assistant",
+                "content": "مرحباً! أنا مورفو، مساعدك الذكي في التسويق. كيف أقدر أساعدك اليوم؟ 🤖"
+            })
             st.rerun()
         
         if st.button("🗑️ مسح المحادثة"):
@@ -425,6 +430,11 @@ def main():
         
         if st.button("🚀 ابدأ الآن", type="primary", use_container_width=True):
             st.session_state.user_id = generate_user_id()
+            # Add a welcome message to chat history
+            st.session_state.chat_history.append({
+                "role": "assistant",
+                "content": "مرحباً! أنا مورفو، مساعدك الذكي في التسويق. كيف أقدر أساعدك اليوم؟ 🤖"
+            })
             st.rerun()
     
     else:
