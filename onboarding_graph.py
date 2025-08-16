@@ -66,14 +66,26 @@ class OBState(TypedDict, total=False):
     ai_insights: Optional[str]
 
 # ---------- AI Assistant for Smart Responses ----------
-llm = ChatOpenAI(
-    model="gpt-4o-mini",
-    temperature=0.7,
-    api_key=os.getenv("OPENAI_API_KEY")
-)
+llm = None
+try:
+    api_key = os.getenv("OPENAI_API_KEY")
+    if api_key:
+        llm = ChatOpenAI(
+            model="gpt-4o-mini",
+            temperature=0.7,
+            api_key=api_key
+        )
+    else:
+        print("⚠️  OpenAI API key not found. AI features will be disabled.")
+except Exception as e:
+    print(f"⚠️  Failed to initialize OpenAI client: {e}")
+    llm = None
 
 def generate_smart_response(context: str, user_input: str, profile_data: Dict[str, Any]) -> str:
     """Generate contextual responses based on user input and profile data"""
+    if llm is None:
+        return "شكراً لك! دعنا نكمل مع الخطوة التالية."
+    
     system_prompt = f"""
     You are MORVO, a smart marketing assistant for the Saudi market. You're helping with user onboarding.
     

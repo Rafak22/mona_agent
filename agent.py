@@ -9,13 +9,17 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o")  # or "gpt-4.1"
 
 # Debug: Check if API key is set
+_oai = None
 if not OPENAI_API_KEY:
     print("⚠️ WARNING: OPENAI_API_KEY is not set!")
     print("Available environment variables:", [k for k in os.environ.keys() if 'OPENAI' in k.upper()])
 else:
     print(f"✅ OPENAI_API_KEY is set (length: {len(OPENAI_API_KEY)})")
-
-_oai = OpenAI(api_key=OPENAI_API_KEY)
+    try:
+        _oai = OpenAI(api_key=OPENAI_API_KEY)
+    except Exception as e:
+        print(f"⚠️ Failed to initialize OpenAI client: {e}")
+        _oai = None
 
 MORVO_SYSTEM_PROMPT = (
     "You are MORVO, an intelligent Arabic/English marketing strategist.\n"
@@ -33,8 +37,8 @@ MORVO_SYSTEM_PROMPT = (
 )
 
 def answer_with_openai(user_text: str, *, system_text: str, history: List[Dict[str, str]] = None) -> str:
-    if not OPENAI_API_KEY:
-        raise Exception("OpenAI API key is not configured. Please set OPENAI_API_KEY environment variable.")
+    if not OPENAI_API_KEY or _oai is None:
+        return "⚠️ خدمة الذكاء الاصطناعي غير متاحة حالياً. يرجى المحاولة لاحقاً."
     
     messages = [{"role": "system", "content": system_text}]
     
@@ -56,8 +60,8 @@ def answer_with_openai(user_text: str, *, system_text: str, history: List[Dict[s
     except Exception as e:
         print(f"❌ OpenAI API Error: {e}")
         if "authentication" in str(e).lower() or "bearer" in str(e).lower():
-            raise Exception("OpenAI API key is invalid or missing. Please check your OPENAI_API_KEY environment variable.")
-        raise e
+            return "⚠️ خطأ في إعدادات API. يرجى التواصل مع الدعم الفني."
+        return f"⚠️ حدث خطأ في معالجة الطلب: {str(e)}"
 
 # ---- Routing keywords (Arabic + English synonyms) ----
 ROUTE_KEYWORDS = {

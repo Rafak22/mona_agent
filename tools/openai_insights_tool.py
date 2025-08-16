@@ -10,12 +10,20 @@ from langchain_core.messages import HumanMessage, SystemMessage
 load_dotenv()
 
 # Initialize OpenAI client
-OPENAI_KEY = os.getenv("OPENAI_API_KEY")
-llm = ChatOpenAI(
-    model="gpt-4o-mini",
-    temperature=0.7,
-    api_key=OPENAI_KEY
-)
+llm = None
+try:
+    OPENAI_KEY = os.getenv("OPENAI_API_KEY")
+    if OPENAI_KEY:
+        llm = ChatOpenAI(
+            model="gpt-4o-mini",
+            temperature=0.7,
+            api_key=OPENAI_KEY
+        )
+    else:
+        print("⚠️  OpenAI API key not found. AI features will be disabled.")
+except Exception as e:
+    print(f"⚠️  Failed to initialize OpenAI client: {e}")
+    llm = None
 
 @tool
 def fetch_openai_insight(query: str, context: Optional[str] = None, profile_data: Optional[Dict[str, Any]] = None) -> str:
@@ -57,6 +65,9 @@ def fetch_openai_insight(query: str, context: Optional[str] = None, profile_data
     if profile_data:
         profile_summary = "\n".join([f"{k}: {v}" for k, v in profile_data.items() if v])
         user_message = f"User Profile:\n{profile_summary}\n\n{user_message}"
+    
+    if llm is None:
+        return "⚠️ خدمة الذكاء الاصطناعي غير متاحة حالياً. يرجى المحاولة لاحقاً."
     
     try:
         # Use the LangChain client for better error handling
@@ -121,6 +132,9 @@ def analyze_marketing_strategy(business_type: str, goals: List[str], budget: str
     6. Cultural considerations for Saudi market
     """
     
+    if llm is None:
+        return "⚠️ خدمة الذكاء الاصطناعي غير متاحة حالياً. يرجى المحاولة لاحقاً."
+    
     try:
         response = llm.invoke([
             SystemMessage(content=system_prompt),
@@ -171,6 +185,9 @@ def generate_content_ideas(content_type: str, industry: str, target_audience: st
     4. Engagement strategies
     5. Cultural considerations
     """
+    
+    if llm is None:
+        return "⚠️ خدمة الذكاء الاصطناعي غير متاحة حالياً. يرجى المحاولة لاحقاً."
     
     try:
         response = llm.invoke([
@@ -224,6 +241,9 @@ def analyze_competitor_strategy(competitor_name: str, industry: str, focus_areas
     5. Opportunities for differentiation
     6. Recommendations for competitive advantage
     """
+    
+    if llm is None:
+        return "⚠️ خدمة الذكاء الاصطناعي غير متاحة حالياً. يرجى المحاولة لاحقاً."
     
     try:
         response = llm.invoke([
