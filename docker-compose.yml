@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  memory:
+    build: ./memory_api
+    command: uvicorn app:app --host 0.0.0.0 --port 8000 --reload
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./memory_api:/app
+    environment:
+      - MEM_DB=mem.db
+
+  supabase-proxy:
+    build: ./supabase_proxy
+    command: uvicorn app:app --host 0.0.0.0 --port 8001 --reload
+    ports:
+      - "8001:8001"
+    volumes:
+      - ./supabase_proxy:/app
+    environment:
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
+
+  agent:
+    build: ./agent
+    command: uvicorn app:app --host 0.0.0.0 --port 9000 --reload
+    ports:
+      - "9000:9000"
+    volumes:
+      - ./agent:/app
+      - ./common:/app/common
+    environment:
+      - MEMORY_API_BASE=http://memory:8000
+      - SUPABASE_API_BASE=http://supabase-proxy:8001
+      - DEFAULT_LANG=ar
+    depends_on:
+      - memory
+      - supabase-proxy
