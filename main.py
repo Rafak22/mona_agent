@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from schema import UserMessage, UserProfileState, UserProfile
 from memory_store import get_user_profile, update_user_profile, users, user_memory
 from tools.conversation_logger import to_uuid, get_or_create_conversation, log_turn_via_rpc
-from onboarding_graph import start_onboarding, resume_onboarding
+from onboarding_graph_fixed import start_onboarding, resume_onboarding
 from agent import run_agent, answer_with_openai, route_query
 from tools.supabase_client import supabase
 from dotenv import load_dotenv
